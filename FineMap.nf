@@ -55,8 +55,7 @@ Channel.fromPath(params.gwaslist)
     .set { gwaslist_ch }
 
 Channel
-    .fromPath(params.genotypefolder)
-    .map { gen -> [file("${gen}.vcf.gz"), file("${gen}.vcf.gz.tbi")] }
+    .fromFilePairs(params.genotypefolder + '/*.vcf.{gz,gz.tbi}', flat: true)
     .set { genotype_ch }
 
 Channel
@@ -126,14 +125,14 @@ process FindRegions {
     tag {FindRegions}
 
     input:
-      set file(gwas), file(samplefile), file(imputationfile) from gwaslist_ch
+      tuple file(gwas), file(samplefile), file(imputationfile) from gwaslist_ch
       val Maf from params.MafThresh
       val Pval from params.PvalThresh
       val Imp from params.InfoThresh
       val Win from params.Win
 
     output:
-      set val(gwas.simpleName), file(gwas), file(samplefile), file(imputationfile) into ss_ch
+      tuple val(gwas.simpleName), file(gwas), file(samplefile), file(imputationfile) into ss_ch
       file("*regions.txt") into regions_ch
 
     """
@@ -161,13 +160,13 @@ process PrepareSumstatRegions {
     tag {PrepareSumstatRegions}
 
     input:
-        set val(gwas_id), val(region), file(ss_file), file(samplelist), file(imputationfile) from gwaslist_ch
+        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), file(imputationfile) from gwaslist_ch
         val Maf from params.MafThresh
         val Pval from params.PvalThresh
         val Imp from params.InfoThresh
 
     output:
-        set val(gwas_id), val(region), file("*_region.txt"), file(samplelist), file("variants_filter.txt") into gwaslist_ch2
+        tuple val(gwas_id), env(chr), val(region), file("*_region.txt"), file(samplelist), file("variants_filter.txt") into gwaslist_ch2
 
         """
         echo ${region}
@@ -179,42 +178,68 @@ process PrepareSumstatRegions {
         -P ${Pval} \
         -M ${Maf} \
         -I ${Imp} \
+
+        chr=\$(echo ${region} | sed -e "s/:.*//g")
+
         """
 }
 
-//gwaslist_ch2.view()
+process GetVcfChr {
 
+    tag {GetVcfChr}
 
- process FilterVcf {
+    input:
+        tuple fileId, file(vcf), file(tbi) from genotype_ch
+
+    output:
+        tuple env(chr), file(vcf), file(tbi) into vcf_ch
+
+        """
+        chr="\$(ls ${vcf} |\
+        sed -e "s/.*chr//g" |\
+        grep -oP "[0-9]{1,2}")"
+        
+        echo \$chr
+
+        """
+}
+
+gwaslist_ch3 = gwaslist_ch2.combine(vcf_ch, by: [0, 1])
+
+gwaslist_ch3.view()
+
+// //gwaslist_ch2.view()
+
+// process FilterVcf {
      
-     tag {FilterVcf}
+//      tag {FilterVcf}
 
-     input:
-        set val(gwas_id), val(region), file(sumstats), file(samplelist), file(variants) from gwaslist_ch2
-        path vcf_path from genotype_ch
-     output:
-        set val(gwas_id), val(region), file(sumstats), file(samplelist), file(variants), file("*_filtered.vcf.gz") into gwaslist_ch3
+//      input:
+//         tuple val(gwas_id), val(region), file(sumstats), file(samplelist), file(variants), file('*vcf.gz*') from gwaslist_ch2
 
-        """
-        chr=\$(echo ${region} | sed -e "s/:.*//g")
-        input_vcf=\$(ls *chr${chr}*.vcf.gz)
+//      output:
+//         tuple val(gwas_id), val(region), file(sumstats), file(samplelist), file(variants), file("*_filtered.vcf.gz*") into gwaslist_ch3
 
-        bcftools view \
-        --regions ${region} \
-        --sample-file ${samplelist} \
-        --force-samples \
-        \${input_vcf} > ${vcf.simpleName}_filtered.vcf
+//         """
+        
+//         input_vcf=\$(ls *chr\${chr}*.vcf.gz)
 
-        bcftools annotate --set-id +'%CHROM\\_%POS\\_%REF\\_%FIRST_ALT' ${vcf.simpleName}_filtered.vcf > ${vcf.simpleName}_filtered.vcf
+//         bcftools view \
+//         --regions ${region} \
+//         --sample-file ${samplelist} \
+//         --force-samples \
+//         \${input_vcf} > chr\${chr}_filtered.vcf
 
-        bcftools view \
-        -e 'ID=@${variants}' \
-        ${vcf.simpleName}_filtered.vcf > ${vcf.simpleName}_filtered.vcf
+//         bcftools annotate --set-id +'%CHROM\\_%POS\\_%REF\\_%FIRST_ALT' chr\${chr}_filtered.vcf > chr\${chr}_filtered.vcf
 
-        bgzip ${vcf.simpleName}_filtered.vcf
-        tabix -p ${vcf.simpleName}_filtered.vcf.gz
-        """
- }
+//         bcftools view \
+//         -e 'ID=@${variants}' \
+//         chr\${chr}_filtered.vcf > chr\${chr}_filtered.vcf
+
+//         bgzip chr\${chr}_filtered.vcf
+//         tabix -p chr\${chr}_filtered.vcf.gz
+//         """
+// }
 
 
 //  process ExtractLdMatrix {
@@ -246,6 +271,19 @@ process PrepareSumstatRegions {
 // process RunSuSiE {
 
 //     tag {RunSuSiE}
+
+//     input:
+
+//     output:
+
+//         """
+
+//         """
+// }
+
+// process MakeReport {
+
+//     tag {MakeReport}
 
 //     input:
 

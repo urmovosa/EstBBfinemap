@@ -140,3 +140,4 @@ ref_alt_SNP <- paste0(sum_stat$chr, ":", sum_stat$pos, "_", sum_stat$Allele1, "_
 # Write out filtered file
 gwas_file_name <- str_replace(args$gwas_file, "\\..*", "")
 fwrite(sum_stat, paste0(gwas_file_name, "_", args$region, "_region.txt"), sep = "\t", quote = FALSE)
+fwrite(as.data.table(ref_alt_SNP), "variants_filter.txt", sep = "\t", quote = FALSE, col.names = FALSE, row.names = FALSE)
