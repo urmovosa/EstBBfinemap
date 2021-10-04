@@ -186,18 +186,18 @@ process PrepareSumstatRegions {
 
 
  process FilterVcf {
-
+     
      tag {FilterVcf}
 
      input:
         set val(gwas_id), val(region), file(sumstats), file(samplelist), file(variants) from gwaslist_ch2
         path vcf_path from genotype_ch
      output:
-        set val(gwas_id), val(region), file(sumstats), file(samplelist), file(variants), file("*_filtered.vcf.gz") from gwaslist_ch3
+        set val(gwas_id), val(region), file(sumstats), file(samplelist), file(variants), file("*_filtered.vcf.gz") into gwaslist_ch3
 
         """
-        chr=$(echo ${region} | sed -e "s/:.*//g")
-        input_vcf=$(ls *chr\${chr}*.vcf.gz)
+        chr=\$(echo ${region} | sed -e "s/:.*//g")
+        input_vcf=\$(ls *chr${chr}*.vcf.gz)
 
         bcftools view \
         --regions ${region} \
@@ -205,7 +205,7 @@ process PrepareSumstatRegions {
         --force-samples \
         \${input_vcf} > ${vcf.simpleName}_filtered.vcf
 
-        bcftools annotate --set-id +'%CHROM\_%POS\_%REF\_%FIRST_ALT' ${vcf.simpleName}_filtered.vcf > ${vcf.simpleName}_filtered.vcf
+        bcftools annotate --set-id +'%CHROM\\_%POS\\_%REF\\_%FIRST_ALT' ${vcf.simpleName}_filtered.vcf > ${vcf.simpleName}_filtered.vcf
 
         bcftools view \
         -e 'ID=@${variants}' \
@@ -213,23 +213,22 @@ process PrepareSumstatRegions {
 
         bgzip ${vcf.simpleName}_filtered.vcf
         tabix -p ${vcf.simpleName}_filtered.vcf.gz
-
         """
  }
 
 
- process ExtractLdMatrix {
+//  process ExtractLdMatrix {
 
-     tag {ExtractLdMatrix}
+//      tag {ExtractLdMatrix}
 
-     input:
+//      input:
 
-     output:
+//      output:
 
-        """
+//         """
         
-        """
- }
+//         """
+//  }
 
 // process PrepareInputs {
 
