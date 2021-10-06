@@ -19,16 +19,18 @@ def helpMessage() {
         -resume
 
     Mandatory arguments:
-    --gwaslist          Tab separated file with header and two columns. First column: path to gwas summary statistics file. Second column: path to sample ID list which was part of this GWAS.
-    --genotypefolder    Folder containing bgzipped and tabixed .vcf files on which all those GWAS's were ran. File names have to contain string "chr[1-23]".
+    --gwaslist          Tab separated file with header (column names: SumStat and SampleList) and two columns. First column: path to gwas summary statistics file. Second column: path to sample ID list which was part of this GWAS.
+    --genotypefolder    Folder containing bgzipped and tabixed .vcf files on which all those GWAS's were ran. File names have to contain the string "chr[1-23]".
     --imputationfile    Separate file containing imputation INFO score for each SNP in the genotype data.
     --outdir            Folder where output is written.
     
     Optional arguments:
+    Filtering:
     --PvalThresh        GWAS P-value threshold for defining significant loci. Defaults to 5e-8.
     --Win               Genomic window to extract loci for finemapping. Defaults 1000000bp to either side of lead SNP.
     --MafThresh         MAF threshold to filter the input GWAS data. Defaults to 0.001.
     --InfoThresh        INFO score threshold to filter the input GWAS data. Defaults to 0.4.
+    SuSiE settings:
     --MaxIter           Maximal number of iterations for SuSiE analysis. Defaults to 100.
     --MaxCausalSnps     Maximal number of causal SNPs tested in SuSiE analysis. Defaults to 10.
 """
@@ -55,8 +57,7 @@ Channel.fromPath(params.gwaslist)
     .set { gwaslist_ch }
 
 Channel
-    .fromPath(params.genotypefolder)
-    .map { gen -> [file("${gen}.vcf.gz"), file("${gen}.vcf.gz.tbi")] }
+    .fromFilePairs(params.genotypefolder + '/*.vcf.{gz,gz.tbi}', flat: true)
     .set { genotype_ch }
 
 Channel
@@ -126,14 +127,14 @@ process FindRegions {
     tag {FindRegions}
 
     input:
-      set file(gwas), file(samplefile), file(imputationfile) from gwaslist_ch
+      tuple file(gwas), file(samplefile), file(imputationfile) from gwaslist_ch
       val Maf from params.MafThresh
       val Pval from params.PvalThresh
       val Imp from params.InfoThresh
       val Win from params.Win
 
     output:
-      set val(gwas.simpleName), file(gwas), file(samplefile), file(imputationfile) into ss_ch
+      tuple val(gwas.simpleName), file(gwas), file(samplefile), file(imputationfile) into ss_ch
       file("*regions.txt") into regions_ch
 
     """
@@ -161,13 +162,13 @@ process PrepareSumstatRegions {
     tag {PrepareSumstatRegions}
 
     input:
-        set val(gwas_id), val(region), file(ss_file), file(samplelist), file(imputationfile) from gwaslist_ch
+        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), file(imputationfile) from gwaslist_ch
         val Maf from params.MafThresh
         val Pval from params.PvalThresh
         val Imp from params.InfoThresh
 
     output:
-        set val(gwas_id), val(region), file("*_region.txt"), file(samplelist), file("variants_filter.txt") into gwaslist_ch2
+        tuple env(chr), val(gwas_id), val(region), file("*_region.txt"), file(samplelist), file("variants_filter.txt") into gwaslist_ch2
 
         """
         echo ${region}
@@ -179,57 +180,94 @@ process PrepareSumstatRegions {
         -P ${Pval} \
         -M ${Maf} \
         -I ${Imp} \
+
+        chr=\$(echo ${region} | sed -e "s/:.*//g")
+
         """
 }
 
-//gwaslist_ch2.view()
+process GetVcfChr {
 
+    tag {GetVcfChr}
 
- process FilterVcf {
+    input:
+        tuple fileId, file(vcf), file(tbi) from genotype_ch
 
+    output:
+        tuple env(chr), file(vcf), file(tbi) into vcf_ch
+
+        """
+        chr="\$(ls ${vcf} |\
+        sed -e "s/.*chr//g" |\
+        grep -oP "[0-9]{1,2}")"
+        
+        echo \$chr
+
+        """
+}
+
+gwaslist_ch3=gwaslist_ch2.combine(vcf_ch, by: 0)
+
+process FilterVcf {
+     
      tag {FilterVcf}
 
      input:
-        set val(gwas_id), val(region), file(sumstats), file(samplelist), file(variants) from gwaslist_ch2
-        path vcf_path from genotype_ch
+        tuple env(chr), val(gwas_id), val(region), file(ss_file), file(samplelist), file(variants), file(vcf), file(tbi) from gwaslist_ch3
+
      output:
-        set val(gwas_id), val(region), file(sumstats), file(samplelist), file(variants), file("*_filtered.vcf.gz") from gwaslist_ch3
+        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), file(variants), file('*_filtered_SnpFormat_InfoFiltered.vcf.gz'), file('*_filtered_SnpFormat_InfoFiltered.vcf.gz.tbi') into gwaslist_ch4
 
         """
-        chr=$(echo ${region} | sed -e "s/:.*//g")
-        input_vcf=$(ls *chr\${chr}*.vcf.gz)
-
         bcftools view \
         --regions ${region} \
-        --sample-file ${samplelist} \
+        --samples-file ${samplelist} \
         --force-samples \
-        \${input_vcf} > ${vcf.simpleName}_filtered.vcf
+        ${vcf} \
+        --threads 8 \
+        --output-type z \
+        --output ${region}_${vcf.simpleName}_filtered.vcf.gz
 
-        bcftools annotate --set-id +'%CHROM\_%POS\_%REF\_%FIRST_ALT' ${vcf.simpleName}_filtered.vcf > ${vcf.simpleName}_filtered.vcf
-
+        bcftools annotate \
+        --set-id '%CHROM\\_%POS\\_%REF\\_%FIRST_ALT' \
+        ${region}_${vcf.simpleName}_filtered.vcf.gz \
+        --threads 8 \
+        --output-type z \
+        --output ${region}_${vcf.simpleName}_filtered_SnpFormat.vcf.gz
+       
+        # Here filter based on INFO score
         bcftools view \
-        -e 'ID=@${variants}' \
-        ${vcf.simpleName}_filtered.vcf > ${vcf.simpleName}_filtered.vcf
+        -i 'ID=@${variants}' \
+        ${region}_${vcf.simpleName}_filtered_SnpFormat.vcf.gz \
+        --threads 8 \
+        --output-type z \
+        --output ${region}_${vcf.simpleName}_filtered_SnpFormat_InfoFiltered.vcf.gz
 
-        bgzip ${vcf.simpleName}_filtered.vcf
-        tabix -p ${vcf.simpleName}_filtered.vcf.gz
+        tabix -p vcf ${region}_${vcf.simpleName}_filtered_SnpFormat_InfoFiltered.vcf.gz
 
+        # Clean up to save disk space
+        rm *_filtered.vcf.gz
+        rm *_filtered_SnpFormat.vcf.gz
         """
- }
+}
 
+process ExtractLdMatrix {
 
- process ExtractLdMatrix {
+    tag {ExtractLdMatrix}
 
-     tag {ExtractLdMatrix}
+    input:
+    tuple val(gwas_id), val(region), file(ss_file), file(samplelist), file(variants), file(vcf), file(tbi) from gwaslist_ch4
+    
+    output:
+    tuple file(ss_file), val(region), file(samplelist), file(variants), file('*_LDmatrix.rds') into prepare_inp_ch
 
-     input:
-
-     output:
-
-        """
-        
-        """
- }
+    """
+    Rscript --vanilla ${baseDir}/bin/CalculateInSampleLD.R \
+    --filtered_vcf_file ${vcf} \
+    --region ${region} \
+    --out ${region}
+    """
+}
 
 // process PrepareInputs {
 
@@ -247,6 +285,19 @@ process PrepareSumstatRegions {
 // process RunSuSiE {
 
 //     tag {RunSuSiE}
+
+//     input:
+
+//     output:
+
+//         """
+
+//         """
+// }
+
+// process MakeReport {
+
+//     tag {MakeReport}
 
 //     input:
 

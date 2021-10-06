@@ -134,9 +134,10 @@ sum_stat <- sum_stat[sum_stat$INFO > INFO_thresh, ]
 message(paste("After INFO score filter", nrow(sum_stat), "variants."))
 
 # REF_ALT SNP list
-ref_alt_SNP <- paste0(sum_stat$chr, ":", sum_stat$pos, "_", sum_stat$Allele1, "_", sum_stat$Allele2)
+ref_alt_SNP <- paste0(sum_stat$chr, "_", sum_stat$pos, "_", sum_stat$Allele1, "_", sum_stat$Allele2)
 
 ### Extra check: are there any SNPs remaining in the region which pass the P-value threshold?
 # Write out filtered file
 gwas_file_name <- str_replace(args$gwas_file, "\\..*", "")
 fwrite(sum_stat, paste0(gwas_file_name, "_", args$region, "_region.txt"), sep = "\t", quote = FALSE)
+fwrite(as.data.table(ref_alt_SNP), "variants_filter.txt", sep = "\t", quote = FALSE, col.names = FALSE, row.names = FALSE)
