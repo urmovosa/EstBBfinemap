@@ -23,3 +23,5 @@ dependencies:
   - conda-forge::r-rmarkdown=2.10
   - conda-forge::git=2.33.0
   - conda-forge::r-susier=0.11.42
+  - conda-forge::r-r.utils=2.11.0
+  - conda-forge::bgenix=1.1.7

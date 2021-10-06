@@ -19,16 +19,18 @@ def helpMessage() {
         -resume
 
     Mandatory arguments:
-    --gwaslist          Tab separated file with header and two columns. First column: path to gwas summary statistics file. Second column: path to sample ID list which was part of this GWAS.
-    --genotypefolder    Folder containing bgzipped and tabixed .vcf files on which all those GWAS's were ran. File names have to contain string "chr[1-23]".
+    --gwaslist          Tab separated file with header (column names: SumStat and SampleList) and two columns. First column: path to gwas summary statistics file. Second column: path to sample ID list which was part of this GWAS.
+    --genotypefolder    Folder containing bgzipped and tabixed .vcf files on which all those GWAS's were ran. File names have to contain the string "chr[1-23]".
     --imputationfile    Separate file containing imputation INFO score for each SNP in the genotype data.
     --outdir            Folder where output is written.
     
     Optional arguments:
+    Filtering:
     --PvalThresh        GWAS P-value threshold for defining significant loci. Defaults to 5e-8.
     --Win               Genomic window to extract loci for finemapping. Defaults 1000000bp to either side of lead SNP.
     --MafThresh         MAF threshold to filter the input GWAS data. Defaults to 0.001.
     --InfoThresh        INFO score threshold to filter the input GWAS data. Defaults to 0.4.
+    SuSiE settings:
     --MaxIter           Maximal number of iterations for SuSiE analysis. Defaults to 100.
     --MaxCausalSnps     Maximal number of causal SNPs tested in SuSiE analysis. Defaults to 10.
 """
@@ -166,7 +168,7 @@ process PrepareSumstatRegions {
         val Imp from params.InfoThresh
 
     output:
-        tuple val(gwas_id), env(chr), val(region), file("*_region.txt"), file(samplelist), file("variants_filter.txt") into gwaslist_ch2
+        tuple env(chr), val(gwas_id), val(region), file("*_region.txt"), file(samplelist), file("variants_filter.txt") into gwaslist_ch2
 
         """
         echo ${region}
@@ -204,56 +206,68 @@ process GetVcfChr {
         """
 }
 
-gwaslist_ch3 = gwaslist_ch2.combine(vcf_ch, by: [0, 1])
+gwaslist_ch3=gwaslist_ch2.combine(vcf_ch, by: 0)
 
-gwaslist_ch3.view()
-
-// //gwaslist_ch2.view()
-
-// process FilterVcf {
+process FilterVcf {
      
-//      tag {FilterVcf}
+     tag {FilterVcf}
 
-//      input:
-//         tuple val(gwas_id), val(region), file(sumstats), file(samplelist), file(variants), file('*vcf.gz*') from gwaslist_ch2
+     input:
+        tuple env(chr), val(gwas_id), val(region), file(ss_file), file(samplelist), file(variants), file(vcf), file(tbi) from gwaslist_ch3
 
-//      output:
-//         tuple val(gwas_id), val(region), file(sumstats), file(samplelist), file(variants), file("*_filtered.vcf.gz*") into gwaslist_ch3
+     output:
+        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), file(variants), file('*_filtered_SnpFormat_InfoFiltered.vcf.gz'), file('*_filtered_SnpFormat_InfoFiltered.vcf.gz.tbi') into gwaslist_ch4
 
-//         """
-        
-//         input_vcf=\$(ls *chr\${chr}*.vcf.gz)
+        """
+        bcftools view \
+        --regions ${region} \
+        --samples-file ${samplelist} \
+        --force-samples \
+        ${vcf} \
+        --threads 8 \
+        --output-type z \
+        --output ${region}_${vcf.simpleName}_filtered.vcf.gz
 
-//         bcftools view \
-//         --regions ${region} \
-//         --sample-file ${samplelist} \
-//         --force-samples \
-//         \${input_vcf} > chr\${chr}_filtered.vcf
+        bcftools annotate \
+        --set-id '%CHROM\\_%POS\\_%REF\\_%FIRST_ALT' \
+        ${region}_${vcf.simpleName}_filtered.vcf.gz \
+        --threads 8 \
+        --output-type z \
+        --output ${region}_${vcf.simpleName}_filtered_SnpFormat.vcf.gz
+       
+        # Here filter based on INFO score
+        bcftools view \
+        -i 'ID=@${variants}' \
+        ${region}_${vcf.simpleName}_filtered_SnpFormat.vcf.gz \
+        --threads 8 \
+        --output-type z \
+        --output ${region}_${vcf.simpleName}_filtered_SnpFormat_InfoFiltered.vcf.gz
 
-//         bcftools annotate --set-id +'%CHROM\\_%POS\\_%REF\\_%FIRST_ALT' chr\${chr}_filtered.vcf > chr\${chr}_filtered.vcf
+        tabix -p vcf ${region}_${vcf.simpleName}_filtered_SnpFormat_InfoFiltered.vcf.gz
 
-//         bcftools view \
-//         -e 'ID=@${variants}' \
-//         chr\${chr}_filtered.vcf > chr\${chr}_filtered.vcf
+        # Clean up to save disk space
+        rm *_filtered.vcf.gz
+        rm *_filtered_SnpFormat.vcf.gz
+        """
+}
 
-//         bgzip chr\${chr}_filtered.vcf
-//         tabix -p chr\${chr}_filtered.vcf.gz
-//         """
-// }
+process ExtractLdMatrix {
 
+    tag {ExtractLdMatrix}
 
-//  process ExtractLdMatrix {
+    input:
+    tuple val(gwas_id), val(region), file(ss_file), file(samplelist), file(variants), file(vcf), file(tbi) from gwaslist_ch4
+    
+    output:
+    tuple file(ss_file), val(region), file(samplelist), file(variants), file('*_LDmatrix.rds') into prepare_inp_ch
 
-//      tag {ExtractLdMatrix}
-
-//      input:
-
-//      output:
-
-//         """
-        
-//         """
-//  }
+    """
+    Rscript --vanilla ${baseDir}/bin/CalculateInSampleLD.R \
+    --filtered_vcf_file ${vcf} \
+    --region ${region} \
+    --out ${region}
+    """
+}
 
 // process PrepareInputs {
 

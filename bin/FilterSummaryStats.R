@@ -134,7 +134,7 @@ sum_stat <- sum_stat[sum_stat$INFO > INFO_thresh, ]
 message(paste("After INFO score filter", nrow(sum_stat), "variants."))
 
 # REF_ALT SNP list
-ref_alt_SNP <- paste0(sum_stat$chr, ":", sum_stat$pos, "_", sum_stat$Allele1, "_", sum_stat$Allele2)
+ref_alt_SNP <- paste0(sum_stat$chr, "_", sum_stat$pos, "_", sum_stat$Allele1, "_", sum_stat$Allele2)
 
 ### Extra check: are there any SNPs remaining in the region which pass the P-value threshold?
 # Write out filtered file
