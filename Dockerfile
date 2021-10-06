@@ -3,6 +3,7 @@ LABEL authors="urmovosa@ut.ee" \
       description="Docker image for running SuSiE fine-mapping analyses on GWAS summary statistics from biobank"
 
 COPY environment.yml /
+RUN conda update conda
 RUN conda env create -f /environment.yml && conda clean -a
 ENV PATH /opt/conda/envs/FineMapPipeline/bin:$PATH
 ENV TAR="/bin/tar"

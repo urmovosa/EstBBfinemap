@@ -14,12 +14,14 @@ dependencies:
   - conda-forge::coreutils=8.31
   - conda-forge::r-stringr=1.4.0
   - conda-forge::cairo=1.16.0
-  - conda-forge::r-data.table=1.14.0
+  - conda-forge::r-data.table=1.14.2
   - conda-forge::r-dplyr=1.0.7
   - conda-forge::r-ggplot2=3.3.5
   - conda-forge::r-optparse=1.6.6
   - conda-forge::r-patchwork=1.1.1
   - conda-forge::mscorefonts=0.0.1
-  - conda-forge::r-rmarkdown=2.10
+  - conda-forge::r-rmarkdown=2.11
   - conda-forge::git=2.33.0
   - conda-forge::r-susier=0.11.42
+  - conda-forge::r-r.utils=2.11.0
+  - conda-forge::bgenix=1.1.7
