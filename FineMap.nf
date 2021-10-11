@@ -15,7 +15,7 @@ def helpMessage() {
         --genotypefolder genotypes\
         --imputationfile InfoFile.txt\
         --outdir output\
-        -profile slurm\
+        -profile slurm,singularity\
         -resume
 
     Mandatory arguments:
@@ -31,7 +31,6 @@ def helpMessage() {
     --MafThresh         MAF threshold to filter the input GWAS data. Defaults to 0.001.
     --InfoThresh        INFO score threshold to filter the input GWAS data. Defaults to 0.4.
     SuSiE settings:
-    --MaxIter           Maximal number of iterations for SuSiE analysis. Defaults to 100.
     --MaxCausalSnps     Maximal number of causal SNPs tested in SuSiE analysis. Defaults to 10.
 """
 }
