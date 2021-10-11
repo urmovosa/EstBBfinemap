@@ -113,14 +113,14 @@ Outputs R .rds files for each SuSiE object tested and .txt.gz files with SNP inf
 
 SuSiE is the work of Wang and colleagues:
 
-![Wang, G., Sarkar, A., Carbonetto, P., & Stephens, M. (2020). A simple new approach to variable selection in regression, with application to genetic fine mapping. Journal of the Royal Statistical Society, Series B 82, 1273–1300. https://doi.org/10.1111/rssb.12388](https://doi.org/10.1111/rssb.12388)
+[Wang, G., Sarkar, A., Carbonetto, P., & Stephens, M. (2020). A simple new approach to variable selection in regression, with application to genetic fine mapping. Journal of the Royal Statistical Society, Series B 82, 1273–1300. https://doi.org/10.1111/rssb.12388](https://doi.org/10.1111/rssb.12388)
 
-![Website](https://stephenslab.github.io/susieR/index.html)
+[Website](https://stephenslab.github.io/susieR/index.html)
 
 LDstore2 is the work of Benner and colleagues:
 
-![Benner, C. et al. Prospects of fine-papping trait-associated genomic regions by using summary statistics from genome-wide association studies. Am. J. Hum. Genet. (2017).](https://www.sciencedirect.com/science/article/pii/S0002929717303348?via%3Dihub)
+[Benner, C. et al. Prospects of fine-papping trait-associated genomic regions by using summary statistics from genome-wide association studies. Am. J. Hum. Genet. (2017).](https://www.sciencedirect.com/science/article/pii/S0002929717303348?via%3Dihub)
 
-![Website](http://www.christianbenner.com/#)
+[Website](http://www.christianbenner.com/#)
 
-Some parts of this pipeline were adapted from ![FinnGen fine-mapping pipeline](https://github.com/FINNGEN/finemapping-pipeline) by Masahiro Kanai and colleagues.
+Some parts of this pipeline were adapted from [FinnGen fine-mapping pipeline](https://github.com/FINNGEN/finemapping-pipeline) by Masahiro Kanai and colleagues.
