@@ -335,12 +335,14 @@ process RunSuSiE {
 
     tag {RunSuSiE}
 
+    publishDir path: "${params$outdir}", mode: 'copy', overwrite: true
+
     input:
         tuple file(ss_file), val(region), file(samplelist), val(trait), file(variants), file(ldmatrix) from prepare_inp_ch
         val MaxCausalSnps from params.MaxCausalSnps
 
     output:
-        tuple file(ss_file), val(region), file(samplelist), val(trait), file(variants), file(ldmatrix), file("*.rds") into output_ch
+        tuple file("*.susie.snp.gz"), file("*.susie.snp.gz"), file("*.susie.log"), file("*.rds") into output_ch
 
         """
         # Calculate var_y (function adapted from FinnGen repo: https://github.com/FINNGEN/finemapping-pipeline/blob/37d75d0451a18d56e713fb5cd7a2907a5b328a7f/wdl/finemap_sub.wdl)

@@ -11,7 +11,7 @@ For every GWAS summary statistics file it:
 - Uses MAF and INFO score thresholds to filter SNPs by QC.
 - Includes only loci which have >= 50 variants after filtering.
 - Uses genotype data (.bgen format) from the same samples to construct LD matrix for each locus (by LDstore2).
-- Runs SuSiE fine-mapping for each locus and outputs SuSiE results.
+- Runs SuSiE fine-mapping (function: susie_suff_stat) for each locus and outputs SuSiE results.
 
 ### Instructions
 
@@ -27,7 +27,7 @@ For every GWAS summary statistics file it:
 
     - PhenoName: name of the GWAS phenotype.
 
-    - SumStat: path to the corresponding GWAS summary statistics file. Has to be in the SAIGE output format.
+    - SumStat: path to the corresponding GWAS summary statistics file. Has to be in the SAIGE output format and can be (b)gzipped.
 
     - SampleFile: file with phenotype information for samples included to GWAS. Has to contain headers: VKOOD (sample ID) and corresponding phenotype name. This file can contain columns for multiple different GWASs/phenotypes.
 
@@ -112,6 +112,7 @@ Outputs R .rds files for each SuSiE object tested and .txt.gz files with SNP inf
 
 - implement .Rmd report with overview and plots.
 - Check the susie_rss in addition to susie_suff_stat.
+- collect outputs to one folder.
 
 ## Acknowledgements
 

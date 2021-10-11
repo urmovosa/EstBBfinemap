@@ -264,9 +264,9 @@ main <- function(args) {
     saveRDS(susie_obj, file = args$`susie_obj`)
   }
   message("Step 10.")
-  fwrite(variables, args$snp, sep = "\t", row.names = F, quote = F)
-  if (!is.null(cs)){fwrite(cs, args$cred, sep = "\t", row.names = F, quote = F)}
-  if (!is.null(cs_99)){fwrite(cs_99, paste0(args$cred,"_99"), sep = "\t", row.names = F, quote = F)}
+  fwrite(variables, paste0(args$snp, ".gz"), sep = "\t", row.names = F, quote = F)
+  if (!is.null(cs)){fwrite(cs, paste0(args$cred, ".gz"), sep = "\t", row.names = F, quote = F)}
+  if (!is.null(cs_99)){fwrite(cs_99, paste0(args$cred,"_99", ".gz"), sep = "\t", row.names = F, quote = F)}
 }
 
 parser <- ArgumentParser()
