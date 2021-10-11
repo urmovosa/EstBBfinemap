@@ -36,30 +36,31 @@ This pipeline uses summary statistics from EstBB GWAS's, corresponding genotype 
 
 #### Settings
 
-    Mandatory arguments:
+Mandatory arguments:
 
-        `--gwaslist`  Tab separated file with header (column names: PhenoName, SumStat, SampleFile) and three columns. First column: phenotype name, second column: path to gwas summary statistics file, third column: path to the file which contains measurements for given phenotype (binary: 0, 1, NA; continuous: continuous numbers). Has to contain phenotype as a column name and column named "VKOOD" for sample IDs.
+`--gwaslist`  Tab separated file with header (column names: PhenoName, SumStat, SampleFile) and three columns. First column: phenotype name, second column: path to gwas summary statistics file, third column: path to the file which contains measurements for given phenotype (binary: 0, 1, NA; continuous: continuous numbers). Has to contain phenotype as a column name and column named "VKOOD" for sample IDs.
 
-        `--genotypefolder`    Folder containing bgen files on which all those GWAS's were ran. File names have to contain the string "chr[1-23]".
+`--genotypefolder`    Folder containing bgen files on which all those GWAS's were ran. File names have to contain the string "chr[1-23]".
 
-        `--imputationfile`    Separate file containing imputation INFO score for each SNP in the genotype data.
+`--imputationfile`    Separate file containing imputation INFO score for each SNP in the genotype data.
 
-        `--outdir`            Folder where output is written.
+`--outdir`            Folder where output is written.
 
-    Optional arguments:
+Optional arguments:
 
-        Filtering:
-        `--PvalThresh`    GWAS P-value threshold for defining significant loci. Defaults to 5e-8.
+Filtering:
+`--PvalThresh`    GWAS P-value threshold for defining significant loci. Defaults to 5e-8.
 
-        `--Win`   Genomic window to extract loci for finemapping. Defaults 1000000bp to either side of lead SNP.
+`--Win`   Genomic window to extract loci for finemapping. Defaults 1000000bp to either side of lead SNP.
 
-        `--MafThresh`   MAF threshold to filter the input GWAS data. Defaults to 0.001.
+`--MafThresh`   MAF threshold to filter the input GWAS data. Defaults to 0.001.
 
-        `--InfoThresh`    INFO score threshold to filter the input GWAS data. Defaults to 0.4.
+`--InfoThresh`    INFO score threshold to filter the input GWAS data. Defaults to 0.4.
 
-    SuSiE settings:
 
-        `--MaxCausalSnps`   Maximal number of causal SNPs tested in SuSiE analysis. Defaults to 10.
+SuSiE settings:
+
+`--MaxCausalSnps`   Maximal number of causal SNPs tested in SuSiE analysis. Defaults to 10.
 
 #### Command
 
