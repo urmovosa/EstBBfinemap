@@ -4,13 +4,14 @@ This pipeline uses summary statistics from EstBB GWAS's, corresponding genotype 
 
 ### What does it do?
 
-- For every GWAS summary statistics file it:
-    - Uses GWAS P-value threshold to extract lead SNPs.
-    - Uses genomic window to construct loci.
-    - Uses MAF and INFO score thresholds to filter SNPs by QC.
-    - Includes only loci which have >= 50 variants after filtering.
-    - Uses genotype data (.bgen format) from the same samples to construct LD matrix for each locus (by LDstore2).
-    - Runs SuSiE fine-mapping for each locus and outputs SuSiE results.
+For every GWAS summary statistics file it:
+
+- Uses GWAS P-value threshold to extract lead SNPs.
+- Uses genomic window to construct loci.
+- Uses MAF and INFO score thresholds to filter SNPs by QC.
+- Includes only loci which have >= 50 variants after filtering.
+- Uses genotype data (.bgen format) from the same samples to construct LD matrix for each locus (by LDstore2).
+- Runs SuSiE fine-mapping for each locus and outputs SuSiE results.
 
 ### Instructions
 
