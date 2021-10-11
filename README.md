@@ -49,6 +49,7 @@ Mandatory arguments:
 Optional arguments:
 
 Filtering:
+
 `--PvalThresh`    GWAS P-value threshold for defining significant loci. Defaults to 5e-8.
 
 `--Win`   Genomic window to extract loci for finemapping. Defaults 1000000bp to either side of lead SNP.
