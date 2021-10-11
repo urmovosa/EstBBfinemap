@@ -3,7 +3,7 @@ library(optparse)
 library(dplyr)
 library(stringr)
 
-setDTthreads(8)
+setDTthreads(4)
 
 # Argument parser
 option_list <- list( 

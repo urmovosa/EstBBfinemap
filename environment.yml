@@ -10,6 +10,7 @@ dependencies:
   - bioconda::plink2=2.00a2.3
   - bioconda::tabix=1.11
   - bioconda::htslib=1.13
+  - conda-forge::r-argparse=2.1.1
   - conda-forge::gawk=5.0.1
   - conda-forge::coreutils=8.31
   - conda-forge::r-stringr=1.4.0

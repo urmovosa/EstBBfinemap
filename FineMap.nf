@@ -19,8 +19,8 @@ def helpMessage() {
         -resume
 
     Mandatory arguments:
-    --gwaslist          Tab separated file with header (column names: SumStat and SampleList) and two columns. First column: path to gwas summary statistics file. Second column: path to sample ID list which was part of this GWAS.
-    --genotypefolder    Folder containing bgzipped and tabixed .vcf files on which all those GWAS's were ran. File names have to contain the string "chr[1-23]".
+    --gwaslist          Tab separated file with header (column names: PhenoName, SumStat, SampleFile) and three columns. First column: phenotype name, second column: path to gwas summary statistics file, third column: path to the file which contains measurements for given phenotype (binary: 0, 1, NA; continuous: continuous numbers). Has to contain phenotype as a column name and column named "VKOOD" for sample IDs.
+    --genotypefolder    Folder containing bgen files on which all those GWAS's were ran. File names have to contain the string "chr[1-23]".
     --imputationfile    Separate file containing imputation INFO score for each SNP in the genotype data.
     --outdir            Folder where output is written.
     
@@ -53,11 +53,11 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
 Channel.fromPath(params.gwaslist)
     .ifEmpty { error "Cannot find gwas list file in: ${params.gwaslist}" }
     .splitCsv(header: true, sep: ' ', strip: true)
-    .map{row -> [ file(row.SumStat), file(row.SampleList) ]}
+    .map{row -> [ file(row.SumStat), file(row.SampleFile), row.PhenoName ]}
     .set { gwaslist_ch }
 
 Channel
-    .fromFilePairs(params.genotypefolder + '/*.vcf.{gz,gz.tbi}', flat: true)
+    .fromFilePairs(params.genotypefolder + '/*.{bgen,bgen.bgi,samples}', flat: true, size: -1)
     .set { genotype_ch }
 
 Channel
@@ -121,20 +121,19 @@ log.info "========================================="
 
 gwaslist_ch = gwaslist_ch.combine(imputationfile_ch)
 
-
 process FindRegions {
 
     tag {FindRegions}
 
     input:
-      tuple file(gwas), file(samplefile), file(imputationfile) from gwaslist_ch
+      tuple file(gwas), file(samplefile), val(trait), file(imputationfile) from gwaslist_ch
       val Maf from params.MafThresh
       val Pval from params.PvalThresh
       val Imp from params.InfoThresh
       val Win from params.Win
 
     output:
-      tuple val(gwas.simpleName), file(gwas), file(samplefile), file(imputationfile) into ss_ch
+      tuple val(gwas.simpleName), file(gwas), file(samplefile), val(trait), file(imputationfile) into ss_ch
       file("*regions.txt") into regions_ch
 
     """
@@ -162,17 +161,15 @@ process PrepareSumstatRegions {
     tag {PrepareSumstatRegions}
 
     input:
-        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), file(imputationfile) from gwaslist_ch
+        tuple val(gwas_id), val(region), file(ss_file), file(samplefile), val(trait), file(imputationfile) from gwaslist_ch
         val Maf from params.MafThresh
         val Pval from params.PvalThresh
         val Imp from params.InfoThresh
 
     output:
-        tuple env(chr), val(gwas_id), val(region), file("*_region.txt"), file(samplelist), file("variants_filter.txt") into gwaslist_ch2
-
+        tuple env(chr), val(gwas_id), val(region), file("*_region.txt"), file(samplefile), val(trait), file("variants_filter.txt") into gwaslist_ch2
+        file("*.log") into region_log_ch
         """
-        echo ${region}
-
         Rscript --vanilla ${baseDir}/bin/FilterSummaryStats.R  \
         -g ${ss_file} \
         -i ${imputationfile} \
@@ -182,72 +179,121 @@ process PrepareSumstatRegions {
         -I ${Imp} \
 
         chr=\$(echo ${region} | sed -e "s/:.*//g")
-
         """
 }
 
-process GetVcfChr {
+process GetGenChr {
 
-    tag {GetVcfChr}
+    tag {GetGenChr}
 
     input:
-        tuple fileId, file(vcf), file(tbi) from genotype_ch
+        tuple fileId, file(bgen), file(bgi), file(sample) from genotype_ch
 
     output:
-        tuple env(chr), file(vcf), file(tbi) into vcf_ch
+        tuple env(chr), file(bgen), file(bgi), file(sample) into bgen_ch
 
         """
-        chr="\$(ls ${vcf} |\
+        chr="\$(ls ${bgen} |\
         sed -e "s/.*chr//g" |\
         grep -oP "[0-9]{1,2}")"
-        
-        echo \$chr
-
         """
 }
 
-gwaslist_ch3=gwaslist_ch2.combine(vcf_ch, by: 0)
+// Filter in only those regions where ther are at least 50 variants after all QC filters
+gwaslist_ch2=gwaslist_ch2.filter{ it[6].countLines() > 50 }
 
-process FilterVcf {
+gwaslist_ch3=gwaslist_ch2.combine(bgen_ch, by: 0)
+
+process PrepareSampleList {
      
-     tag {FilterVcf}
+     tag {PrepareSampleList}
 
-     input:
-        tuple env(chr), val(gwas_id), val(region), file(ss_file), file(samplelist), file(variants), file(vcf), file(tbi) from gwaslist_ch3
-
-     output:
-        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), file(variants), file('*_filtered_SnpFormat_InfoFiltered.vcf.gz'), file('*_filtered_SnpFormat_InfoFiltered.vcf.gz.tbi') into gwaslist_ch4
+    input:
+        tuple env(chr), val(gwas_id), val(region), file(ss_file), file(samplefile), val(trait), file(variants), file(bgen), file(bgi), file(sample) from gwaslist_ch3
+    
+    output:
+        tuple env(chr), val(gwas_id), val(region), file(ss_file), file("*_PhenoList.txt"), val(trait), file(variants), file(bgen), file(bgi), file(sample) into gwaslist_ch4
 
         """
-        bcftools view \
-        --regions ${region} \
-        --samples-file ${samplelist} \
-        --force-samples \
-        ${vcf} \
-        --threads 8 \
-        --output-type z \
-        --output ${region}_${vcf.simpleName}_filtered.vcf.gz
+        Rscript --vanilla ${baseDir}/bin/PrepareSampleList.R \
+        --samples_file ${samplefile} \
+        --phenotype ${trait}
+        """
+}
 
-        bcftools annotate \
-        --set-id '%CHROM\\_%POS\\_%REF\\_%FIRST_ALT' \
-        ${region}_${vcf.simpleName}_filtered.vcf.gz \
-        --threads 8 \
-        --output-type z \
-        --output ${region}_${vcf.simpleName}_filtered_SnpFormat.vcf.gz
-       
-        # Here filter based on INFO score
-        bcftools view \
-        -i 'ID=@${variants}' \
-        ${region}_${vcf.simpleName}_filtered_SnpFormat.vcf.gz \
-        --threads 8 \
-        --output-type z \
-        --output ${region}_${vcf.simpleName}_filtered_SnpFormat_InfoFiltered.vcf.gz
+process FilterBgen {
+     
+     tag {FilterBgen}
 
-        tabix -p vcf ${region}_${vcf.simpleName}_filtered_SnpFormat_InfoFiltered.vcf.gz
+     input:
+        tuple env(chr), val(gwas_id), val(region), file(ss_file), file(samplelist), val(trait), file(variants), file(bgen), file(bgi), file(sample) from gwaslist_ch4
 
-        # Clean up to save disk space
-        rm *_filtered.vcf.gz
-        rm *_filtered_SnpFormat.vcf.gz
+     output:
+        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), val(trait), file(variants), file('*.bgen'), file('*.bgi'), file('*.sample') into gwaslist_ch5
+
+        """
+        # Parse region
+        chr=\$(echo ${region} | sed -e "s/:.*//g")
+        start=\$(echo ${region} | sed -e "s/.*://g" | sed -e "s/-.*//g")
+        end=\$(echo ${region} | sed -e "s/.*://g" | sed -e "s/.*-//g")
+
+        # Parse sample list
+        awk '{print \$1}' ${samplelist} > samplelist.txt
+
+        # NB!!! it seems that ref/alt are swapped in EstBB .bgen file
+        plink2 \
+        --bgen ${bgen} ref-last \
+        --chr \${chr} \
+        --from-bp \${start} \
+        --to-bp \${end} \
+        --keep samplelist.txt \
+        --set-all-var-ids @:#\\\$a,\\\$r \
+        --export bgen-1.3 \
+        --new-id-max-allele-len 500 \
+        --threads 4 \
+        --memory 25600 \
+        --out ${region}
+
+        bgenix -index -g ${region}.bgen
+        """
+}
+
+process FilterInfoBgen {
+     
+     tag {FilterInfoBgen}
+
+    errorStrategy 'ignore' //TODO!!! fix this: bgen is done, yet it crashes for some cases (chr20)
+
+     input:
+        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), val(trait), file(variants), file(bgen), file(bgi), file(sample) from gwaslist_ch5
+
+     output:
+        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), val(trait), file(variants), file('*filtered.bgen'), file('*filtered.bgen.bgi'), file('*filtered.sample'), file('*.z') into gwaslist_ch6
+
+        """
+
+        plink2 \
+        --bgen ${region}.bgen ref-last \
+        --extract ${variants} \
+        --threads 4 \
+        --memory 25600 \
+        --export bgen-1.3 \
+        --out ${region}_filtered
+
+        bgenix -index -g ${region}_filtered.bgen
+
+        plink2 \
+        --bgen ${region}_filtered.bgen \
+        --make-just-bim \
+        --out ${region}_filtered
+
+        echo "rsid chromosome position allele1 allele2" > ${region}.z
+        awk 'BEGIN { OFS = " "} { print \$2, \$1, \$4, \$5, \$6 }' ${region}_filtered.bim >> ${region}.z
+
+        #mv ${region}_filtered.bgen ${region}.bgen
+        #mv ${region}_filtered.bgen.bgi ${region}.bgen.bgi
+        #mv ${region}_filtered.sample ${region}.sample
+
         """
 }
 
@@ -256,44 +302,110 @@ process ExtractLdMatrix {
     tag {ExtractLdMatrix}
 
     input:
-    tuple val(gwas_id), val(region), file(ss_file), file(samplelist), file(variants), file(vcf), file(tbi) from gwaslist_ch4
+        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), val(trait), file(variants), file(bgen), file(bgi), file(sample), file(zfile) from gwaslist_ch6
     
     output:
-    tuple file(ss_file), val(region), file(samplelist), file(variants), file('*_LDmatrix.rds') into prepare_inp_ch
+        tuple file(ss_file), val(region), file(samplelist), val(trait), file(variants), file('*.ld.gz') into prepare_inp_ch
 
-    """
-    Rscript --vanilla ${baseDir}/bin/CalculateInSampleLD.R \
-    --filtered_vcf_file ${vcf} \
-    --region ${region} \
-    --out ${region}
-    """
+        """
+        # Prepare master file
+        nrows=\$(wc -l ${samplelist} | awk '{print \$1}')
+        nsamples=\$((\${nrows} - 1))
+
+        echo "z;bgen;bgi;bcor;ld;n_samples;bdose" > master.txt
+
+        echo "${region}.z;${region}_filtered.bgen;${region}_filtered.bgen.bgi;${region}.bcor;${region}.ld;\${nsamples};${region}.bdose" >> master.txt
+
+        # Calculate correlation
+        /usr/bin/ldstore \
+        --in-files master.txt \
+        --write-bcor \
+        --read-only-bgen \
+        --n-threads 4 
+
+        /usr/bin/ldstore \
+        --in-files master.txt \
+        --rsids ${variants} \
+        --bcor-to-text 
+
+        gzip ${region}.ld
+        """
 }
 
-// process PrepareInputs {
+process RunSuSiE {
 
-//     tag {PrepareInputs}
+    tag {RunSuSiE}
 
-//     input:
+    input:
+        tuple file(ss_file), val(region), file(samplelist), val(trait), file(variants), file(ldmatrix) from prepare_inp_ch
+        val MaxCausalSnps from params.MaxCausalSnps
 
-//     output:
+    output:
+        tuple file(ss_file), val(region), file(samplelist), val(trait), file(variants), file(ldmatrix), file("*.rds") into output_ch
 
-//         """
+        """
+        # Calculate var_y (function adapted from FinnGen repo: https://github.com/FINNGEN/finemapping-pipeline/blob/37d75d0451a18d56e713fb5cd7a2907a5b328a7f/wdl/finemap_sub.wdl)
+        var_y=\$(cat ${samplelist} | awk -v ph=Phenotype '
+        BEGIN {
+            FS = "\\t"
+        }
+        NR == 1 {
+            for(i = 1; i <= NF; i++) {
+                h[\$i] = i
+            }
+            exists=ph in h
+            if (!exists) {
+                print "Phenotype:"ph" not found in the given phenotype file." > "/dev/stderr"
+                err = 1
+                exit 1
+            }
+            cases = 0
+            controls = 0
+        }
+        NR > 1 {
+            vals[\$h[ph]] += 1
+            if (\$h[ph] != "NA" && \$h[ph] != 0 && \$h[ph] != 1) {
+                print "Phenotype:"ph" seems a quantitative trait. Setting var_y = 1." > "/dev/stderr"
+                print 1.0
+                err = 1
+                exit 0
+            }
+        }
+        END {
+            if (!err) {
+                phi = vals["1"] / (vals["1"]+vals["0"])
+                var_y = phi*(1-phi)
+                printf var_y
+            }
+        }')
 
-//         """
-// }
+        if [[ \$? -ne 0 ]]
+        then
+            echo "Error occurred while getting var_y from case control counts:" \$var_y
+            exit 1
+        fi
 
-// process RunSuSiE {
+        # Prepare master file
+        nrows=\$(wc -l ${samplelist} | awk '{print \$1}')
+        nsamples=\$((\${nrows} - 1))
 
-//     tag {RunSuSiE}
-
-//     input:
-
-//     output:
-
-//         """
-
-//         """
-// }
+        # Run SuSiE
+        Rscript --vanilla ${baseDir}/bin/RunSusieFinemappingSuffStat.R \
+        --z ${ss_file} \
+        --ld ${ldmatrix} \
+        -n \${nsamples} \
+        --L ${MaxCausalSnps} \
+        --var-y \${var_y} \
+        --snp ${trait}_${region}.susie.snp \
+        --cred ${trait}_${region}.susie.cred \
+        --log ${trait}_${region}.susie.log \
+        --susie-obj ${trait}_${region}.susie.rds \
+        --save-susie-obj \
+        --write-alpha \
+        --write-single-effect \
+        --min-cs-corr 0.5
+        """
+}
 
 // process MakeReport {
 

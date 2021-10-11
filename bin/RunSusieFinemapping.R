@@ -1,7 +1,8 @@
 library(data.table)
-library(tidyverse)
+library(dplyr)
+library(stringr)
 library(susieR)
-library(Cairo)
+library(optparse)
 
 # Parse arguments ----
 # Argument parser
@@ -13,7 +14,7 @@ option_list <- list(
 	make_option(c("-i", "--MaxIter"), default = 100, 
     help = "Number of maximum iterations for SuSiE to run. Defaults to 100."),
     make_option(c("-c", "--MaxCausalSnps"), default = 10, 
-    help = "Maximum number of causal SNPs SuSie considers. Defaults to 10")
+    help = "Maximum number of causal SNPs SuSie considers. Defaults to 10"),
     make_option(c("-o", "--output"), type = "character", 
     help = "Output rds file, containing the SuSie output object with finemapping results. Has to have an extension .rds.")
     )
@@ -40,14 +41,11 @@ sumstats <- fread(args$SummaryStatisticsFile)
 # Read in and process LD matrix file ----
 message("Read in and process LD matrix file")
 
-LDmat <- readRDS(args$LdFile)
+LDmat <- fread(args$LdFile)
 LDmat <- as.data.frame(LDmat)
+LDmat <- LDmat[, -1]
 rownames(LDmat) <- colnames(LDmat)
 LDmat <- as.matrix(LDmat)
-# Force matrix to be symmetric (probably numeric precision problem)
-# NB!!! there is probably a bug in emeraLD
-LDmat[lower.tri(LDmat)] <- t(LDmat)[lower.tri(LDmat)]
-
 
 # Sanity check: are SNPs the same in sumstats and LD matrix
 if(!nrow(LDmat) == nrow(sumstats)){stop("Different number of SNPs in inputs!")}
@@ -56,7 +54,14 @@ as.data.frame(table(colnames(LDmat) == sumstats$UniqueSnpId))
 # Run Susie finemapping ----
 message("Run Susie finemapping")
 # Convert beta and se(beta) to Z-score
-sumstats$Z <- sumstats$BETA/sumstats$SE
+# Test: standardize beta and se(beta)
+sumstats$MAF <- sumstats$AF_Allele2
+sumstats[MAF > 0.5, ]$MAF <- 1 - sumstats[MAF > 0.5, ]$MAF
+
+sumstats$beta_s <- sumstats$BETA * sqrt(2 * sumstats$MAF * (1 - sumstats$MAF))
+sumstats$se_s <- sumstats$SE * sqrt(2 * sumstats$MAF * (1 - sumstats$MAF))
+
+sumstats$Z <- sumstats$beta_s/sumstats$se_s
 
 fitted_rss <- susie_rss(z = sumstats$Z, 
                         R = LDmat,
@@ -67,3 +72,16 @@ fitted_rss <- susie_rss(z = sumstats$Z,
                         track_fit = TRUE,
                         check_R = TRUE,
                         check_z = TRUE)
+
+
+fitted_rss <- susie_rss(z = sumstats$Z[1:500], 
+                        R = LDmat[1:500, 1:500],
+                        estimate_residual_variance = TRUE,
+                        estimate_prior_variance = TRUE,
+                        max_iter = 100,
+                        L = 10,
+                        track_fit = TRUE,
+                        check_R = FALSE,
+                        check_z = TRUE)
+
+saveRDS(fitted_rss, file = args$output)

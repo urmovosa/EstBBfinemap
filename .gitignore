@@ -1,0 +1,11 @@
+.DS_Store
+*.out
+work
+*log
+singularity_img
+deprecated
+.nextflow
+submit_FineMap_pipeline.sh
+*.log.*
+*.log
+

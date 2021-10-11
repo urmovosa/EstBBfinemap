@@ -3,7 +3,7 @@ library(optparse)
 library(stringr)
 library(dplyr)
 
-setDTthreads(8)
+setDTthreads(4)
 
 # Argument parser
 option_list <- list( 
@@ -92,10 +92,15 @@ reg <- str_replace(args$region, ".*:", "")
 start <- str_replace(reg, "-.*", "")
 end <- str_replace(reg, ".*-", "")
 
+# start making log file
+log_file <- data.table(gwas_file = args$gwas_file, 
+region = args$region, 
+nr_of_SNPs = 0, 
+after_MAF_filter = 0,
+after_INFO_filter = 0)
+
 # Read file in
 # Read in summary stats file
-# sum_stat <- fread(args$gwas_file)
-
 filter_cmd <- paste0("gunzip -c ", args$gwas_file, " | awk '{ if($1 == ",  as.numeric(chr), " && $2 > ", as.numeric(start), " && $2 < ", as.numeric(end), ") { print }}' ")
 sum_stat <- fread(cmd = filter_cmd)
 help_head <- fread(cmd = paste0("gunzip -c ", args$gwas_file, " | head -n 2"))
@@ -103,6 +108,7 @@ colnames(sum_stat) <- colnames(help_head)
 
 message("Sumstats read!")
 
+log_file$nr_of_SNPs <- nrow(sum_stat)
 
 # Read in imputation quality file
 imp <- fread(args$info_file)
@@ -110,8 +116,6 @@ message("Imputation file read!")
 
 # Filter:
 ## Based on region
-message(paste("Before region filter", nrow(sum_stat), "variants."))
-sum_stat <- sum_stat[as.character(sum_stat$CHR) == chr & as.numeric(sum_stat$POS) > as.numeric(start) & as.numeric(sum_stat$POS) < as.numeric(end), ]
 imp <- imp[as.character(imp$CHR) == chr & as.numeric(imp$POS) > as.numeric(start) & as.numeric(imp$POS) < as.numeric(end), ]
 imp <- imp[, c(2, 3, 4, 5, 7), with = FALSE]
 
@@ -124,6 +128,8 @@ message(paste("After MAF filter", nrow(sum_stat), "variants."))
 sum_stat <- sum_stat[, c(1, 2, 3, 4, 5, 7, 9, 10, 11, 13), with = FALSE]
 colnames(sum_stat)[c(1, 2, 10)] <- c("chr", "pos", "P")
 
+log_file$after_MAF_filter <- nrow(sum_stat)
+
 ## Based on INFO score
 ### Unique SNP IDs
 sum_stat$UniqueSnpId <- ConvUniqSNPName(chr = sum_stat$chr, pos = sum_stat$pos, allele1 = sum_stat$Allele1, allele2 = sum_stat$Allele2)
@@ -133,11 +139,14 @@ sum_stat <- merge(sum_stat, imp[, c(6, 5), with = FALSE], by = "UniqueSnpId")
 sum_stat <- sum_stat[sum_stat$INFO > INFO_thresh, ]
 message(paste("After INFO score filter", nrow(sum_stat), "variants."))
 
+log_file$after_INFO_filter <- nrow(sum_stat)
+
 # REF_ALT SNP list
-ref_alt_SNP <- paste0(sum_stat$chr, "_", sum_stat$pos, "_", sum_stat$Allele1, "_", sum_stat$Allele2)
+ref_alt_SNP <- paste0(sum_stat$chr, ":", sum_stat$pos, "", sum_stat$Allele1, ",", sum_stat$Allele2)
 
 ### Extra check: are there any SNPs remaining in the region which pass the P-value threshold?
 # Write out filtered file
 gwas_file_name <- str_replace(args$gwas_file, "\\..*", "")
 fwrite(sum_stat, paste0(gwas_file_name, "_", args$region, "_region.txt"), sep = "\t", quote = FALSE)
 fwrite(as.data.table(ref_alt_SNP), "variants_filter.txt", sep = "\t", quote = FALSE, col.names = FALSE, row.names = FALSE)
+fwrite(log_file, paste0(gwas_file_name, '_', args$region, '.log'), sep = "\t", quote = FALSE, col.names = FALSE, row.names = FALSE)
