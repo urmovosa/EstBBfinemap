@@ -19,7 +19,7 @@ module load squashfs/4.4
 nextflow_path=[full path to your Nextflow executable]
 
 gwaslist=[path to gwas list file]
-genotypefolder=[path to genotype .vcf.gz used]
+genotypefolder=[path to folder with genotype .bgen files]
 imputationfile=[path to imputation quality file]
 output_path=[name of the output path]
 
