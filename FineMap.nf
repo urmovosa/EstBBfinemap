@@ -335,7 +335,7 @@ process RunSuSiE {
 
     tag {RunSuSiE}
 
-    publishDir path: "${params$outdir}", mode: 'copy', overwrite: true
+    publishDir path: "${params.outdir}/PipelineOutput", mode: 'copy', overwrite: true
 
     input:
         tuple file(ss_file), val(region), file(samplelist), val(trait), file(variants), file(ldmatrix) from prepare_inp_ch
