@@ -63,10 +63,9 @@ Channel
     .fromPath(params.imputationfile)
     .set { imputationfile_ch }
 
-/* 
 Channel
     .fromPath('bin/Report_template.Rmd')
-    .set { report_ch } */
+    .set { report_ch }
 
 params.PvalThresh = 5e-8
 params.Win = 1000000
@@ -74,6 +73,12 @@ params.MafThresh = 0.01
 params.InfoThresh = 0.4
 params.MaxIter = 100
 params.MaxCausalSnps = 10
+
+
+Channel
+    .fromPath('bin/Report_template.Rmd')
+    .set { report_ch }
+
 
 // Header log info
 log.info """=======================================================
@@ -342,7 +347,7 @@ process RunSuSiE {
         val MaxCausalSnps from params.MaxCausalSnps
 
     output:
-        tuple file("*.susie.snp.gz"), file("*.susie.cred.gz"), file("*.susie.log"), file("*.rds") into output_ch
+        tuple file("*.susie.snp.gz"), file("*.susie.cred.gz"), file("*.susie.log"), file("*.rds") into output_ch,to_report_ch
 
         """
         # Calculate var_y (function adapted from FinnGen repo: https://github.com/FINNGEN/finemapping-pipeline/blob/37d75d0451a18d56e713fb5cd7a2907a5b328a7f/wdl/finemap_sub.wdl)
@@ -408,15 +413,26 @@ process RunSuSiE {
         """
 }
 
-// process MakeReport {
+report_ch = report_ch.collect()
 
-//     tag {MakeReport}
+process MakeReport {
 
-//     input:
+    tag {MakeReport}
 
-//     output:
+     publishDir path: "${params.outdir}/PipelineOutput", mode: 'copy', overwrite: true
 
-//         """
+    input:
+    path report from report_ch
+    tuple file("*.susie.snp.gz"), file("*.susie.cred.gz"), file("*.susie.log"), file("*.rds") from to_report_ch
 
-//         """
-// }
+    output:
+        path "Report_FineMapping_*" into report_output
+
+        """
+        # Make report
+        cp -L ${report} notebook.Rmd
+
+        R -e 'library(rmarkdown);rmarkdown::render("notebook.Rmd", "html_document", 
+        output_file = "Report_FineMapping.html"'
+        """
+}

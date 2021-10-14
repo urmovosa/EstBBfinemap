@@ -34,7 +34,7 @@ For every GWAS summary statistics file it:
 
 Mandatory arguments:
 
-`--gwaslist`  Tab separated file with header (column names: PhenoName, SumStat, SampleFile) and three columns. First column: phenotype name, second column: path to gwas summary statistics file, third column: path to the file which contains measurements for given phenotype (binary: 0, 1, NA; continuous: continuous numbers). Has to contain phenotype as a column name and column named "VKOOD" for sample IDs.
+`--gwaslist`  Space separated file with header (column names: PhenoName, SumStat, SampleFile) and three columns. First column: phenotype name, second column: path to gwas summary statistics file, third column: path to the file which contains measurements for given phenotype (binary: 0, 1, NA; continuous: continuous numbers). Has to contain phenotype as a column name and column named "VKOOD" for sample IDs.
 
 `--genotypefolder`    Folder containing bgen files on which all those GWAS's were ran. File names have to contain the string "chr[1-23]".
 
@@ -101,13 +101,12 @@ ${nextflow_path}/nextflow run FineMap.nf \
 
 #### Output
 
-Outputs R .rds files for each SuSiE object tested and .txt.gz files with SNP information (including PIPs and credible set membership).
+Outputs R .rds files for each SuSiE object tested and .txt.gz files with SNP information (including PIPs and credible set membership). It also outputs .html report with per-locus summary and plots.
 
 ### TODO
 
 - implement .Rmd report with overview and plots.
 - Check the susie_rss in addition to susie_suff_stat.
-- collect outputs to one folder.
 
 ## Acknowledgements
 

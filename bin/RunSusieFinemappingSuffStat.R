@@ -18,10 +18,12 @@ load_R <- function(path, dominant = FALSE, triangular_ld_matrix = FALSE) {
   }
 
   R <- as.data.frame(R)
+  rownames(R) <- R$rsid
   R <- R[, -1]
-  rownames(R) <- colnames(R)
-
   R <- as.matrix(R)
+  R <- R[order(match(rownames(R), colnames(R))), ]
+
+  
   if (dominant) {
     warning("--dominant is specified. LD matrix is squared.")
     R <- R**2
@@ -184,6 +186,13 @@ main <- function(args) {
     require(Matrix)
     R <- Matrix::.sparseDiagonal(nrow(df))
   }
+  message("Check SNP order and reorder if needed!")
+  df <- df[order(df$position), ]
+  df$UniqueSnpId2 <- paste0(df$chromosome, ":", df$position, df$allele1, ",", df$allele2)
+  if (!all(colnames(R) == df$UniqueSnpId2)){
+  R <- R[order(match(colnames(R), df$UniqueSnpId2)), order(match(rownames(R), df$UniqueSnpId2))]
+  }
+
   message("Step 3.")
   if (args$`compute_yty`) {
     yty <- compute_yty(df$beta, df$se, df$maf, R, n, args$`n_covariates`)
@@ -265,8 +274,15 @@ main <- function(args) {
   }
   message("Step 10.")
   fwrite(variables, paste0(args$snp, ".gz"), sep = "\t", row.names = F, quote = F)
-  if (!is.null(cs)){fwrite(cs, paste0(args$cred, ".gz"), sep = "\t", row.names = F, quote = F)}
-  if (!is.null(cs_99)){fwrite(cs_99, paste0(args$cred,"_99", ".gz"), sep = "\t", row.names = F, quote = F)}
+  if (is.null(cs)){
+    cs <- data.table(cs = 1, cs_log10bf = 1, cs_avg_r2 = 1, cs_min_r2 = 1, low_purity = FALSE, cs_size = 1)[-1, ]
+    }
+  fwrite(cs, paste0(args$cred, ".gz"), sep = "\t", row.names = F, quote = F)
+
+  if (is.null(cs_99)){
+    cs_99 <- data.table(cs = 1, cs_log10bf = 1, cs_avg_r2 = 1, cs_min_r2 = 1, low_purity = FALSE, cs_size = 1)[-1, ]
+    }
+  fwrite(cs_99, paste0(args$cred,"_99", ".gz"), sep = "\t", row.names = F, quote = F)
 }
 
 parser <- ArgumentParser()
@@ -295,7 +311,6 @@ parser$add_argument("--dominant", action = "store_true")
 parser$add_argument("--triangular-ld-matrix", action = "store_true", help = "Use triangular LD matrix")
 
 args <- parser$parse_args()
-
 
 if (is.null(args$out)) {
   args$out <- "tmp"

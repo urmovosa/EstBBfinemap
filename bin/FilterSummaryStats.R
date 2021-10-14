@@ -41,8 +41,8 @@ ConvUniqSNPName <- function(chr = chr, pos = pos, allele1 = a1, allele2 = a2) {
   chr <- as.character(chr)
 
   # Check if chromosomes are 1:22, X, Y, MT
-  if (!all(chr %in% c(as.character(1:22), "X", "Y", "MT"))) {
-    stop("Error: some of the chromosomes are not 1:22, X, Y, MT. Please check!")
+  if (!all(chr %in% c(as.character(1:23), "X", "Y", "MT"))) {
+    stop("Error: some of the chromosomes are not 1:23, X, Y, MT. Please check!")
   }
 
   # Combine chr and pos
