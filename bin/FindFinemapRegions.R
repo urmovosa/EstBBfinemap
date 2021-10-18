@@ -76,12 +76,13 @@ if (!nrow(sum_stat[sum_stat$P < P_thresh, ]) > 0){
 
   abi <- data.table(SS = "temp", Region = "temp")
   gwas_file_name <- str_replace(args$gwas_file, "\\..*", "")
+  abi$Region <- str_replace(abi$Region, "23:", "X:")
   fwrite(abi[-1, ], paste0(gwas_file_name, "_regions.txt"), sep = "\t")
 
 } else {
 
   regions <- IdentifyLeadSNPs(sum_stat, window = WIN, Pthresh = P_thresh)
   gwas_file_name <- str_replace(args$gwas_file, "\\..*", "")
-
+  regions <- str_replace(regions, "23:", "X:")
   fwrite(data.table(SS = gwas_file_name, Region = regions), paste0(gwas_file_name, "_regions.txt"), sep = "\t")
 }

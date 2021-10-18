@@ -42,7 +42,7 @@ ConvUniqSNPName <- function(chr = chr, pos = pos, allele1 = a1, allele2 = a2) {
 
   # Check if chromosomes are 1:22, X, Y, MT
   if (!all(chr %in% c(as.character(1:23), "X", "Y", "MT"))) {
-    stop("Error: some of the chromosomes are not 1:23, X, Y, MT. Please check!")
+    stop("Error: some of the chromosomes are not 1:22, X, Y, MT. Please check!")
   }
 
   # Combine chr and pos
@@ -101,10 +101,15 @@ after_INFO_filter = 0)
 
 # Read file in
 # Read in summary stats file
-filter_cmd <- paste0("gunzip -c ", args$gwas_file, " | awk '{ if($1 == ",  as.numeric(chr), " && $2 > ", as.numeric(start), " && $2 < ", as.numeric(end), ") { print }}' ")
+if(chr == "X"){chr <- 23}
+filter_cmd <- paste0("gunzip -c ", args$gwas_file, " | awk '{ if($1 == ", chr, " && $2 > ", as.numeric(start), " && $2 < ", as.numeric(end), ") { print }}' ")
+
 sum_stat <- fread(cmd = filter_cmd)
 help_head <- fread(cmd = paste0("gunzip -c ", args$gwas_file, " | head -n 2"))
 colnames(sum_stat) <- colnames(help_head)
+
+sum_stat$CHR <- as.character(sum_stat$CHR)
+sum_stat[sum_stat$CHR == "23", ]$CHR <- "X"
 
 message("Sumstats read!")
 

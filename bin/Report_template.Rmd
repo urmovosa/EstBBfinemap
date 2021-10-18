@@ -4,7 +4,7 @@ date: "`r format(Sys.time(), '%d/%m/%y')`"
 output: html_document
 ---
 
-```{r setup, echo=FALSE}
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
 library(data.table)
 library(stringr)
 library(ggplot2)
@@ -139,16 +139,15 @@ for (i in 1:length(phenotypes)) {
       highest_pip <- snp %>% filter(cs != "-1") %>% group_by(cs) %>% filter(prob == max(prob))
       temp <- fread(per_pheno_table$cred_files[j])
       temp <- temp[order(temp$cs), ]
+    } else {
+      temp <- data.frame(cs = "temp", cs_log10bf = "temp", cs_avg_r2 = "temp", cs_min_r2 = "temp", low_purity = "temp", cs_size = "temp")
+      temp <- temp[-1, ]
+    }
+
       cat(paste0("\n##### Summary about CSs: ", "\n"))
       print(knitr::kable(temp))
       cat(paste0("\n##### Highest PIP SNP per each CS: ", "\n"))
       print(knitr::kable(highest_pip[order(highest_pip$cs), c(1:12, 16:17)]))
-    } else {
-      temp <- data.frame(cs = "temp", cs_log10bf = "temp", cs_avg_r2 = "temp", cs_min_r2 = "temp", low_purity = "temp", cs_size = "temp")
-      temp <- temp[-1, 132]
-    }
-
-    
 
 
     cat("\n")

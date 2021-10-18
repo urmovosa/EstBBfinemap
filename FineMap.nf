@@ -266,8 +266,6 @@ process FilterInfoBgen {
      
      tag {FilterInfoBgen}
 
-    errorStrategy 'ignore' //TODO!!! fix this: bgen is done, yet it crashes for some cases (chr20)
-
      input:
         tuple val(gwas_id), val(region), file(ss_file), file(samplelist), val(trait), file(variants), file(bgen), file(bgi), file(sample) from gwaslist_ch5
 
@@ -413,7 +411,7 @@ process RunSuSiE {
         """
 }
 
-report_ch = report_ch.collect()
+to_report_ch = to_report_ch.collect()
 
 process MakeReport {
 
@@ -422,17 +420,17 @@ process MakeReport {
      publishDir path: "${params.outdir}/PipelineOutput", mode: 'copy', overwrite: true
 
     input:
-    path report from report_ch
-    tuple file("*.susie.snp.gz"), file("*.susie.cred.gz"), file("*.susie.log"), file("*.rds") from to_report_ch
+        path report from report_ch
+        file "*" from to_report_ch
 
     output:
-        path "Report_FineMapping_*" into report_output
+        path "Report_FineMapping*" into report_output
 
         """
         # Make report
         cp -L ${report} notebook.Rmd
 
         R -e 'library(rmarkdown);rmarkdown::render("notebook.Rmd", "html_document", 
-        output_file = "Report_FineMapping.html"'
+        output_file = "Report_FineMapping.html")'
         """
 }
