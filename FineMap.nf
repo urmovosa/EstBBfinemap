@@ -244,15 +244,14 @@ process FilterBgen {
         # Parse sample list
         awk '{print \$1}' ${samplelist} > samplelist.txt
 
-        # NB!!! it seems that ref/alt are swapped in EstBB .bgen file
         plink2 \
-        --bgen ${bgen} ref-last \
+        --bgen ${bgen} ref-first \
         --chr \${chr} \
         --from-bp \${start} \
         --to-bp \${end} \
         --keep samplelist.txt \
-        --set-all-var-ids @:#\\\$a,\\\$r \
-        --export bgen-1.3 \
+        --set-all-var-ids @:#\\\$r,\\\$a \
+        --export bgen-1.3 ref-first \
         --new-id-max-allele-len 500 \
         --threads 4 \
         --memory 25600 \
@@ -275,11 +274,11 @@ process FilterInfoBgen {
         """
 
         plink2 \
-        --bgen ${region}.bgen ref-last \
+        --bgen ${region}.bgen ref-first \
         --extract ${variants} \
         --threads 4 \
         --memory 25600 \
-        --export bgen-1.3 \
+        --export bgen-1.3 ref-first \
         --out ${region}_filtered
 
         bgenix -index -g ${region}_filtered.bgen
@@ -291,10 +290,6 @@ process FilterInfoBgen {
 
         echo "rsid chromosome position allele1 allele2" > ${region}.z
         awk 'BEGIN { OFS = " "} { print \$2, \$1, \$4, \$5, \$6 }' ${region}_filtered.bim >> ${region}.z
-
-        #mv ${region}_filtered.bgen ${region}.bgen
-        #mv ${region}_filtered.bgen.bgi ${region}.bgen.bgi
-        #mv ${region}_filtered.sample ${region}.sample
 
         """
 }
