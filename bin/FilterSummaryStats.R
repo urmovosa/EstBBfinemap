@@ -9,15 +9,15 @@ setDTthreads(4)
 option_list <- list( 
     make_option(c("-g", "--gwas_file"), type = "character",
     help = "GWAS summary statistics file."),
-    make_option(c("-i", "--info_file"), type = "character", 
+    make_option(c("-i", "--info_file"), type = "character",
     help = "Help file with SNP imputation info."),
-    make_option(c("-r", "--region"), type = "character", 
+    make_option(c("-r", "--region"), type = "character",
     help = "Region to filter from summary statistics."),
-    make_option(c("-P", "--P_threshold"), default = 5e-8, 
+    make_option(c("-P", "--P_threshold"), default = 5e-8,
     help = "GWAS P-value threshold. Defaults to 5e-8."),
-    make_option(c("-M", "--Maf_threshold"), default = 0.01, 
+    make_option(c("-M", "--Maf_threshold"), default = 0.01,
     help = "MAF threshold for filtering SNPs. Defaults to 0.01."),
-    make_option(c("-I", "--INFO_threshold"), default = 0.4, 
+    make_option(c("-I", "--INFO_threshold"), default = 0.4,
     help = "Info score threshold. Defaults to 0.4.")
     )
 parser <- OptionParser(usage = "%prog [options] file", option_list = option_list)
@@ -72,10 +72,6 @@ ConvUniqSNPName <- function(chr = chr, pos = pos, allele1 = a1, allele2 = a2) {
 
   temp_table$value <- as.character(temp_table$value)
 
-  # temp_table <- temp_table %>%
-  #   group_by(chr_pos, id) %>%
-  #   mutate(sort_alleles = paste(sort(unique(value)), collapse = "_"))
-
   # Attempt to speed up with data.table
   temp_table <- as.data.table(temp_table)
   temp_table[, sort_alleles := paste(sort(unique(as.character(value))), collapse = "_"), by = .(chr_pos, id)]
@@ -102,14 +98,12 @@ after_INFO_filter = 0)
 # Read file in
 # Read in summary stats file
 if(chr == "X"){chr <- 23}
+
 filter_cmd <- paste0("gunzip -c ", args$gwas_file, " | awk '{ if($1 == ", chr, " && $2 > ", as.numeric(start), " && $2 < ", as.numeric(end), ") { print }}' ")
 
 sum_stat <- fread(cmd = filter_cmd)
 help_head <- fread(cmd = paste0("gunzip -c ", args$gwas_file, " | head -n 2"))
 colnames(sum_stat) <- colnames(help_head)
-
-sum_stat$CHR <- as.character(sum_stat$CHR)
-sum_stat[sum_stat$CHR == "23", ]$CHR <- "X"
 
 message("Sumstats read!")
 
@@ -126,18 +120,14 @@ imp <- imp[, c(2, 3, 4, 5, 7), with = FALSE]
 
 ## MAF
 message(paste("Before MAF filter", nrow(sum_stat), "variants."))
-sum_stat <- sum_stat[sum_stat$AF_Allele2 > MAF_thresh & 
-sum_stat$AF_Allele2 < (1 - MAF_thresh), ]
+sum_stat <- sum_stat[sum_stat$maf > MAF_thresh, ]
 message(paste("After MAF filter", nrow(sum_stat), "variants."))
-
-sum_stat <- sum_stat[, c(1, 2, 3, 4, 5, 7, 9, 10, 11, 13), with = FALSE]
-colnames(sum_stat)[c(1, 2, 10)] <- c("chr", "pos", "P")
 
 log_file$after_MAF_filter <- nrow(sum_stat)
 
 ## Based on INFO score
 ### Unique SNP IDs
-sum_stat$UniqueSnpId <- ConvUniqSNPName(chr = sum_stat$chr, pos = sum_stat$pos, allele1 = sum_stat$Allele1, allele2 = sum_stat$Allele2)
+sum_stat$UniqueSnpId <- ConvUniqSNPName(chr = sum_stat$chr, pos = sum_stat$pos, allele1 = sum_stat$ref_allele, allele2 = sum_stat$effect_allele)
 imp$UniqueSnpId <- ConvUniqSNPName(chr = imp$CHR, pos = imp$POS, allele1 = imp$REF, allele2 = imp$ALT)
 ### Merge and filter
 sum_stat <- merge(sum_stat, imp[, c(6, 5), with = FALSE], by = "UniqueSnpId")
@@ -147,9 +137,8 @@ message(paste("After INFO score filter", nrow(sum_stat), "variants."))
 log_file$after_INFO_filter <- nrow(sum_stat)
 
 # REF_ALT SNP list
-ref_alt_SNP <- paste0(sum_stat$chr, ":", sum_stat$pos, "", sum_stat$Allele1, ",", sum_stat$Allele2)
+ref_alt_SNP <- paste0(sum_stat$chr, ":", sum_stat$pos, "", sum_stat$ref_allele, ",", sum_stat$effect_allele)
 
-### Extra check: are there any SNPs remaining in the region which pass the P-value threshold?
 # Write out filtered file
 gwas_file_name <- str_replace(args$gwas_file, "\\..*", "")
 fwrite(sum_stat, paste0(gwas_file_name, "_", args$region, "_region.txt"), sep = "\t", quote = FALSE)

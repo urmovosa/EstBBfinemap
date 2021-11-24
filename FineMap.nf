@@ -19,7 +19,7 @@ def helpMessage() {
         -resume
 
     Mandatory arguments:
-    --gwaslist          Tab separated file with header (column names: PhenoName, SumStat, SampleFile) and three columns. First column: phenotype name, second column: path to gwas summary statistics file, third column: path to the file which contains measurements for given phenotype (binary: 0, 1, NA; continuous: continuous numbers). Has to contain phenotype as a column name and column named "VKOOD" for sample IDs.
+    --gwaslist          Tab separated file with header (column names: PhenoName, SumStat, SampleFile) and three columns. First column: phenotype name, second column: path to gwas summary statistics file, third column: path to the file which contains measurements for given phenotype (binary: 0, 1, NA; continuous: continuous numbers). Has to contain sample IDs phenotype names as a column name.
     --genotypefolder    Folder containing bgen files on which all those GWAS's were ran. File names have to contain the string "chr[1-23]".
     --imputationfile    Separate file containing imputation INFO score for each SNP in the genotype data.
     --outdir            Folder where output is written.
@@ -35,6 +35,7 @@ def helpMessage() {
     --BetaCol           Name of the beta column in the summary statistics files.
     --SeCol             Name of the se(beta) column in the summary statistics files.
     --PvalCol           Name of the P-value column in the summary statistics files.
+    --SampleId          Name of the sample ID in the sample Sample file.
     Filtering:
     --PvalThresh        GWAS P-value threshold for defining significant loci. Defaults to 5e-8.
     --Win               Genomic window to extract loci for finemapping. Defaults 1000000bp to either side of lead SNP.
@@ -66,7 +67,7 @@ Channel.fromPath(params.gwaslist)
     .set { gwaslist_ch }
 
 Channel
-    .fromFilePairs(params.genotypefolder + '/*.{bgen,bgen.bgi,samples}', flat: true, size: -1)
+    .fromFilePairs(params.genotypefolder + '/*.{bgen,bgen.bgi,sample}', flat: true, size: -1)
     .set { genotype_ch }
 
 Channel
@@ -77,13 +78,23 @@ Channel
     .fromPath('bin/Report_template.Rmd')
     .set { report_ch }
 
+params.ChrCol = "CHR"
+params.ChrPosCol = "POS"
+params.RefAllCol = "Allele1"
+params.EffAllCol = "Allele2"
+params.MafCol = "AF_Allele2"
+params.BetaCol = "BETA"
+params.SeCol = "SE"
+params.PvalCol = "p.value"
+params.SampleId = "VKOOD"
+
 params.PvalThresh = 5e-8
 params.Win = 1000000
 params.MafThresh = 0.01
 params.InfoThresh = 0.4
 params.MaxIter = 100
-params.MaxCausalSnps = 10
 
+params.MaxCausalSnps = 10
 
 Channel
     .fromPath('bin/Report_template.Rmd')
@@ -158,6 +169,14 @@ process FindRegions {
     -W ${Win} \
     -M ${Maf} \
     -I ${Imp} \
+    -C ${params.ChrCol} \
+    -n ${params.ChrPosCol} \
+    -r ${params.RefAllCol} \
+    -e ${params.EffAllCol} \
+    -m ${params.MafCol} \
+    -b ${params.BetaCol} \
+    -s ${params.SeCol} \
+    -p ${params.PvalCol}
     """
 }
 
@@ -231,6 +250,7 @@ process PrepareSampleList {
         """
         Rscript --vanilla ${baseDir}/bin/PrepareSampleList.R \
         --samples_file ${samplefile} \
+        --sample_id ${params.SampleId} \
         --phenotype ${trait}
         """
 }

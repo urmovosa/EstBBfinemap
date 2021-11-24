@@ -159,9 +159,7 @@ main <- function(args) {
   L <- args$L
 
   # tweak input
-  df$MAF <- df$AF_Allele2
-  df[df$MAF > 0.5, ]$MAF <- 1 - df[df$MAF > 0.5, ]$MAF
-  colnames(df)[c(2, 3, 5, 6, 9, 10, 13)] <- c("chromosome", "position", "allele1", "allele2", "beta", "se", "maf")
+  colnames(df)[c(2, 3, 4, 5, 7, 8, 6)] <- c("chromosome", "position", "allele1", "allele2", "beta", "se", "maf")
 
   message("Step 1.")
   if (!is.null(args$`prior_weights`)) {
