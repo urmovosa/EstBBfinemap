@@ -8,4 +8,5 @@ deprecated
 submit_FineMap_pipeline.sh
 *.log.*
 *.log
-
+tests
+.gitignore
