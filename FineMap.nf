@@ -25,6 +25,16 @@ def helpMessage() {
     --outdir            Folder where output is written.
     
     Optional arguments:
+    Data management:
+    Data management settings are easiest to set in nextflow.conf.
+    --ChrCol            Name of the chromosome column in the summary statistics files. 
+    --ChrPosCol         Name of the genomic position column in the summary statistics files.
+    --RefAllCol         Name of the reference allele column in the summary statistics files.
+    --EffAllCol         Name of the effect allele column in the summary statistics files.
+    --MafCol            Name of the MAF column in the summary statistics files.
+    --BetaCol           Name of the beta column in the summary statistics files.
+    --SeCol             Name of the se(beta) column in the summary statistics files.
+    --PvalCol           Name of the P-value column in the summary statistics files.
     Filtering:
     --PvalThresh        GWAS P-value threshold for defining significant loci. Defaults to 5e-8.
     --Win               Genomic window to extract loci for finemapping. Defaults 1000000bp to either side of lead SNP.
@@ -137,7 +147,7 @@ process FindRegions {
       val Win from params.Win
 
     output:
-      tuple val(gwas.simpleName), file(gwas), file(samplefile), val(trait), file(imputationfile) into ss_ch
+      tuple val(gwas.simpleName), file("standardized_*"), file(samplefile), val(trait), file(imputationfile) into ss_ch
       file("*regions.txt") into regions_ch
 
     """
@@ -244,14 +254,13 @@ process FilterBgen {
         # Parse sample list
         awk '{print \$1}' ${samplelist} > samplelist.txt
 
-        # NB!!! it seems that ref/alt are swapped in EstBB .bgen file
         plink2 \
-        --bgen ${bgen} ref-last \
+        --bgen ${bgen} ref-first \
         --chr \${chr} \
         --from-bp \${start} \
         --to-bp \${end} \
         --keep samplelist.txt \
-        --set-all-var-ids @:#\\\$a,\\\$r \
+        --set-all-var-ids @:#\\\$r,\\\$a \
         --export bgen-1.3 \
         --new-id-max-allele-len 500 \
         --threads 4 \
@@ -275,11 +284,11 @@ process FilterInfoBgen {
         """
 
         plink2 \
-        --bgen ${region}.bgen ref-last \
+        --bgen ${region}.bgen ref-first \
         --extract ${variants} \
         --threads 4 \
         --memory 25600 \
-        --export bgen-1.3 \
+        --export bgen-1.3 ref-first \
         --out ${region}_filtered
 
         bgenix -index -g ${region}_filtered.bgen
@@ -291,10 +300,6 @@ process FilterInfoBgen {
 
         echo "rsid chromosome position allele1 allele2" > ${region}.z
         awk 'BEGIN { OFS = " "} { print \$2, \$1, \$4, \$5, \$6 }' ${region}_filtered.bim >> ${region}.z
-
-        #mv ${region}_filtered.bgen ${region}.bgen
-        #mv ${region}_filtered.bgen.bgi ${region}.bgen.bgi
-        #mv ${region}_filtered.sample ${region}.sample
 
         """
 }
