@@ -261,7 +261,7 @@ process FilterBgen {
         --to-bp \${end} \
         --keep samplelist.txt \
         --set-all-var-ids @:#\\\$r,\\\$a \
-        --export bgen-1.3 \
+        --export bgen-1.3 ref-first \
         --new-id-max-allele-len 500 \
         --threads 4 \
         --memory 25600 \
