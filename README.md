@@ -32,7 +32,7 @@ For every GWAS summary statistics file it:
 
 #### Settings
 
-Mandatory arguments:
+**Mandatory arguments:**
 
 `--gwaslist`  Space separated file with header (column names: PhenoName, SumStat, SampleFile) and three columns. First column: phenotype name, second column: path to gwas summary statistics file, third column: path to the file which contains measurements for given phenotype (binary: 0, 1, NA; continuous: continuous numbers). Has to contain phenotype as a column name and column named "VKOOD" for sample IDs.
 
@@ -42,7 +42,7 @@ Mandatory arguments:
 
 `--outdir`            Folder where output is written.
 
-Optional arguments:
+**Optional arguments:**
 
 Data management settings:
 
