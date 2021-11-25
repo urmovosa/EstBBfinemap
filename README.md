@@ -28,7 +28,7 @@ For every GWAS summary statistics file it:
     - SumStat: path to the corresponding GWAS summary statistics file. Has to be in the SAIGE output format and can be (b)gzipped.
     - SampleFile: file with phenotype information for samples included to GWAS. Has to contain headers: VKOOD (sample ID) and corresponding phenotype name. This file can contain columns for multiple different GWASs/phenotypes.
 - Genotype folder for samples used in GWASs (.bgen format). This is automatically subsetted based on phenotype information file and LD matrices for GWAS loci are constructed, based on exactly the same samples as were in the GWAS.
-- Imputation information file. File which contains imputation INFO score for each variant in the genotype data. Has to contain columns: ID, CHR, POS, REF, ALT and INFO and can be gzipped. **NB!** in the future this info should be available in the summary statistics files not in separate file.
+- Imputation information file. File which contains imputation INFO score for each variant in the genotype data. Has to contain columns: ID, CHR, POS, REF, ALT and INFO and can be gzipped. **NB!** in the future this info should be available in the summary statistics files not in the separate file.
 
 #### Settings
 
@@ -44,6 +44,28 @@ Mandatory arguments:
 
 Optional arguments:
 
+Data management settings:
+
+Defaults for those are specified in the nextflow.conf, corresponding to SAIGE file format and EstBB sample ID name.
+
+`--ChrCol`  Name of the chromosome column in the summary statistics files.
+
+`--ChrPosCol`   Name of the genomic position column in the summary statistics files.
+
+`--RefAllCol`   Name of the reference allele column in the summary statistics files.
+
+`--EffAllCol`   Name of the effect allele column in the summary statistics files.
+
+`--MafCol`  Name of the MAF column in the summary statistics files.
+
+`--BetaCol` Name of the beta column in the summary statistics files.
+
+`--SeCol`   Name of the se(beta) column in the summary statistics files.
+
+`--PvalCol` Name of the P-value column in the summary statistics files.
+
+`--SampleId`    Name of the sample ID in the sample Sample file.
+
 Filtering:
 
 `--PvalThresh`    GWAS P-value threshold for defining significant loci. Defaults to 5e-8.
@@ -53,7 +75,6 @@ Filtering:
 `--MafThresh`   MAF threshold to filter the input GWAS data. Defaults to 0.01.
 
 `--InfoThresh`    INFO score threshold to filter the input GWAS data. Defaults to 0.4.
-
 
 SuSiE settings:
 

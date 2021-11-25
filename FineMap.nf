@@ -21,7 +21,7 @@ def helpMessage() {
     Mandatory arguments:
     --gwaslist          Tab separated file with header (column names: PhenoName, SumStat, SampleFile) and three columns. First column: phenotype name, second column: path to gwas summary statistics file, third column: path to the file which contains measurements for given phenotype (binary: 0, 1, NA; continuous: continuous numbers). Has to contain sample IDs phenotype names as a column name.
     --genotypefolder    Folder containing bgen files on which all those GWAS's were ran. File names have to contain the string "chr[1-23]".
-    --imputationfile    Separate file containing imputation INFO score for each SNP in the genotype data.
+    --imputationfile    Separate file containing imputation INFO score for each SNP in the genotype data. Required fields are CHR, POS, REF, ALT, INFO.
     --outdir            Folder where output is written.
     
     Optional arguments:
@@ -35,7 +35,7 @@ def helpMessage() {
     --BetaCol           Name of the beta column in the summary statistics files.
     --SeCol             Name of the se(beta) column in the summary statistics files.
     --PvalCol           Name of the P-value column in the summary statistics files.
-    --SampleId          Name of the sample ID in the sample Sample file.
+    --SampleId          Name of the sample ID in the sample file.
     Filtering:
     --PvalThresh        GWAS P-value threshold for defining significant loci. Defaults to 5e-8.
     --Win               Genomic window to extract loci for finemapping. Defaults 1000000bp to either side of lead SNP.
@@ -77,16 +77,6 @@ Channel
 Channel
     .fromPath('bin/Report_template.Rmd')
     .set { report_ch }
-
-params.ChrCol = "CHR"
-params.ChrPosCol = "POS"
-params.RefAllCol = "Allele1"
-params.EffAllCol = "Allele2"
-params.MafCol = "AF_Allele2"
-params.BetaCol = "BETA"
-params.SeCol = "SE"
-params.PvalCol = "p.value"
-params.SampleId = "VKOOD"
 
 params.PvalThresh = 5e-8
 params.Win = 1000000
