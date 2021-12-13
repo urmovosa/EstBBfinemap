@@ -10,7 +10,7 @@ library(argparse)
 
 load_R <- function(path, dominant = FALSE, triangular_ld_matrix = FALSE) {
   if (tools::file_ext(path) == "ld") {
-    R <- fread(path, header = TRUE)
+    R <- fread(path, header = TRUE, na.strings = c("NaN", "NA"))
   } else if (tools::file_ext(path) %in% c("gz", "bgz")) {
     R <- fread(cmd = paste("zcat", path), header = TRUE)
   } else {
@@ -191,6 +191,14 @@ main <- function(args) {
   R <- R[order(match(colnames(R), df$UniqueSnpId2)), order(match(rownames(R), df$UniqueSnpId2))]
   }
 
+  message("Find SNPs which are NA in LD matrix, remove from the analysis.")
+
+  SNPsToRemove <- rownames(R)[is.na(R[rownames(R) == rownames(R)[1], ]) == TRUE]
+  R <- R[!rownames(R) %in% SNPsToRemove, !colnames(R) %in% SNPsToRemove]
+  df <- df[!df$UniqueSnpId2 %in% SNPsToRemove]
+  table(colnames(R) == df$UniqueSnpId2)
+  message(paste(length(colnames(R)), "in analysis."))
+
   message("Step 3.")
   if (args$`compute_yty`) {
     yty <- compute_yty(df$beta, df$se, df$maf, R, n, args$`n_covariates`)
@@ -211,14 +219,6 @@ main <- function(args) {
   }
   message("Step 4.")
 
-  print(head(df))
-  print(R[1:5, 1:5])
-  print(n)
-  print(L)
-  print(var_y)
-  print(prior_weights)
-  print(args$`min_cs_corr`)
-  print(args$`low_purity_threshold`)
 
   res <- susie_ss_wrapper(
     df, R, n, L, var_y, prior_weights,
@@ -335,10 +335,10 @@ print(args)
 if (is.null(args$out) & any(sapply(list(args$snp, args$cred, args$log), is.null))) {
   stop("Either --out or all of --snp, --cred, and --log should be specified.")
 }
-if ((args$`var_y` != 1.0 | !is.null(args$yty)) & args$`compute_yty`) {
+if ((args$`var_y` != 1.0 | !is.null(args$yty)) & args$`compute_yty` == TRUE) {
   warning("--compute-yty will override the specified --var-y/--yty.")
 }
-if (args$`compute_yty` & is.null(args$`n_covariates`)) {
+if (args$`compute_yty` == TRUE & is.null(args$`n_covariates`)) {
   stop("--n-covariates is required for --compute-yty.")
 }
 

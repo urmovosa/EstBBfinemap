@@ -61,4 +61,4 @@ ConvUniqSNPName <- function(chr = chr, pos = pos, allele1 = a1, allele2 = a2) {
   if (!all(round(pos) == pos)) {
     stop("Error: chromosome position is not integer")
   }
-  
+}
