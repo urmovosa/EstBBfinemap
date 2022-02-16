@@ -80,78 +80,79 @@ for (i in 1:length(phenotypes)) {
     snp$cs <- as.factor(snp$cs)
     snp$lead_r2 <- as.numeric(snp$lead_r2)
     snp$cs <- factor(as.character(snp$cs), levels = c("-1", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"))
+    if (nrow(snps[snps$cs != -1]) > 0){
+      snp$LD_lead <- "R2<=0.1"
+      if (nrow(snp[snp$lead_r2 > 0.1 & snp$lead_r2 <= 0.2, ]) > 0) {
+        snp[snp$lead_r2 > 0.1 & snp$lead_r2 <= 0.2, ]$LD_lead <- "0.1<R2<=0.2"
+      }
+      if (nrow(snp[snp$lead_r2 > 0.2 & snp$lead_r2 <= 0.5, ]) > 0) {
+        snp[snp$lead_r2 > 0.2 & snp$lead_r2 <= 0.5, ]$LD_lead <- "0.2<R2<=0.5"
+      }
+      if (nrow(snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.8, ]) > 0) {
+        snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.8, ]$LD_lead <- "0.5<R2<=0.8"
+      }
+      if (nrow(snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.95, ]) > 0) {
+        snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.95, ]$LD_lead <- "0.8<R2<=0.95"
+      }
+      if (nrow(snp[snp$lead_r2 > 0.95, ]) > 0) {
+        snp[snp$lead_r2 > 0.95, ]$LD_lead <- ">0.95"
+      }
 
-    snp$LD_lead <- "R2<=0.1"
-    if (nrow(snp[snp$lead_r2 > 0.1 & snp$lead_r2 <= 0.2, ]) > 0) {
-      snp[snp$lead_r2 > 0.1 & snp$lead_r2 <= 0.2, ]$LD_lead <- "0.1<R2<=0.2"
+      p0 <- ggplot(snp, aes(x = position, y = -log10(P), color = LD_lead)) +
+        geom_point() +
+        theme_bw() +
+        scale_colour_manual(values = c(
+          "R2<=0.1" = "darkgrey",
+          "0.1<R2<=0.2" = "cornsilk2",
+          "0.2<R2<=0.5" = "gold",
+          "0.5<R2<=0.8" = "salmon1",
+          "0.8<R2<=0.95" = "red1",
+          ">0.95" = "coral4"
+        )) +
+        theme(legend.position = "none", axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
+        ggtitle(per_pheno_table$regions[j]) +
+        xlab(NULL)
+
+      p1 <- ggplot(snp, aes(x = position, y = -log10(P), color = cs, size = cs)) +
+        geom_point() +
+        theme_bw() +
+        scale_colour_manual(values = c("-1" = "darkgrey", "1" = "red1", "2" = "#fff100", "3" = "#ff8c00", "4" = "#ec008c", "5" = "#68217a", "6" = "#00188f", "7" = "#00bcf2", "8" = "#00b294", "9" = "#009e49", "10" = "#bad80a")) +
+        scale_size_manual(values = c("-1" = 1, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2, "8" = 2, "9" = 2, "10" = 2)) +
+        theme(legend.position = "none", axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
+        xlab(NULL)
+
+      p2 <- ggplot(snp, aes(x = position, y = prob, color = cs, size = cs)) +
+        geom_point() +
+        theme_bw() +
+        scale_colour_manual(values = c("-1" = "darkgrey", "1" = "red1", "2" = "#fff100", "3" = "#ff8c00", "4" = "#ec008c", "5" = "#68217a", "6" = "#00188f", "7" = "#00bcf2", "8" = "#00b294", "9" = "#009e49", "10" = "#bad80a")) +
+        scale_size_manual(values = c("-1" = 1, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2, "8" = 2, "9" = 2, "10" = 2)) +
+        theme(legend.position = "none") +
+        ylab("PIP") +
+        scale_y_continuous(limits = c(0, 1))
+
+      print(p0 / p1 / p2)
+      cat("\n")
+
+      # For each cs, SNP with highest PIP
+      
+      if (file.exists(per_pheno_table$cred_files[j])) {
+        highest_pip <- snp %>% filter(cs != "-1") %>% group_by(cs) %>% filter(prob == max(prob))
+        temp <- fread(per_pheno_table$cred_files[j])
+        temp <- temp[order(temp$cs), ]
+      } else {
+        temp <- data.frame(cs = "temp", cs_log10bf = "temp", cs_avg_r2 = "temp", cs_min_r2 = "temp", low_purity = "temp", cs_size = "temp")
+        temp <- temp[-1, ]
+      }
+
+        cat(paste0("\n##### Summary about CSs: ", "\n"))
+        print(knitr::kable(temp))
+        cat(paste0("\n##### Highest PIP SNP per each CS: ", "\n"))
+        print(knitr::kable(highest_pip[order(highest_pip$cs), c(1:12, 16:17)]))
+
+
+      cat("\n")
+      cat("\n")
     }
-    if (nrow(snp[snp$lead_r2 > 0.2 & snp$lead_r2 <= 0.5, ]) > 0) {
-      snp[snp$lead_r2 > 0.2 & snp$lead_r2 <= 0.5, ]$LD_lead <- "0.2<R2<=0.5"
-    }
-    if (nrow(snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.8, ]) > 0) {
-      snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.8, ]$LD_lead <- "0.5<R2<=0.8"
-    }
-    if (nrow(snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.95, ]) > 0) {
-      snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.95, ]$LD_lead <- "0.8<R2<=0.95"
-    }
-    if (nrow(snp[snp$lead_r2 > 0.95, ]) > 0) {
-      snp[snp$lead_r2 > 0.95, ]$LD_lead <- ">0.95"
-    }
-
-    p0 <- ggplot(snp, aes(x = position, y = -log10(P), color = LD_lead)) +
-      geom_point() +
-      theme_bw() +
-      scale_colour_manual(values = c(
-        "R2<=0.1" = "darkgrey",
-        "0.1<R2<=0.2" = "cornsilk2",
-        "0.2<R2<=0.5" = "gold",
-        "0.5<R2<=0.8" = "salmon1",
-        "0.8<R2<=0.95" = "red1",
-        ">0.95" = "coral4"
-      )) +
-      theme(legend.position = "none", axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-      ggtitle(per_pheno_table$regions[j]) +
-      xlab(NULL)
-
-    p1 <- ggplot(snp, aes(x = position, y = -log10(P), color = cs, size = cs)) +
-      geom_point() +
-      theme_bw() +
-      scale_colour_manual(values = c("-1" = "darkgrey", "1" = "red1", "2" = "#fff100", "3" = "#ff8c00", "4" = "#ec008c", "5" = "#68217a", "6" = "#00188f", "7" = "#00bcf2", "8" = "#00b294", "9" = "#009e49", "10" = "#bad80a")) +
-      scale_size_manual(values = c("-1" = 1, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2, "8" = 2, "9" = 2, "10" = 2)) +
-      theme(legend.position = "none", axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
-      xlab(NULL)
-
-    p2 <- ggplot(snp, aes(x = position, y = prob, color = cs, size = cs)) +
-      geom_point() +
-      theme_bw() +
-      scale_colour_manual(values = c("-1" = "darkgrey", "1" = "red1", "2" = "#fff100", "3" = "#ff8c00", "4" = "#ec008c", "5" = "#68217a", "6" = "#00188f", "7" = "#00bcf2", "8" = "#00b294", "9" = "#009e49", "10" = "#bad80a")) +
-      scale_size_manual(values = c("-1" = 1, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2, "8" = 2, "9" = 2, "10" = 2)) +
-      theme(legend.position = "none") +
-      ylab("PIP") +
-      scale_y_continuous(limits = c(0, 1))
-
-    print(p0 / p1 / p2)
-    cat("\n")
-
-    # For each cs, SNP with highest PIP
-    
-    if (file.exists(per_pheno_table$cred_files[j])) {
-      highest_pip <- snp %>% filter(cs != "-1") %>% group_by(cs) %>% filter(prob == max(prob))
-      temp <- fread(per_pheno_table$cred_files[j])
-      temp <- temp[order(temp$cs), ]
-    } else {
-      temp <- data.frame(cs = "temp", cs_log10bf = "temp", cs_avg_r2 = "temp", cs_min_r2 = "temp", low_purity = "temp", cs_size = "temp")
-      temp <- temp[-1, ]
-    }
-
-      cat(paste0("\n##### Summary about CSs: ", "\n"))
-      print(knitr::kable(temp))
-      cat(paste0("\n##### Highest PIP SNP per each CS: ", "\n"))
-      print(knitr::kable(highest_pip[order(highest_pip$cs), c(1:12, 16:17)]))
-
-
-    cat("\n")
-    cat("\n")
   }
 }
 ```
