@@ -48,14 +48,15 @@ P_thresh <- args$P_threshold
 IdentifyLeadSNPs <- function(data, window = 1000000, Pthresh = 5e-8, RemoveHLA = TRUE) {
 
   data_f <- data[data$P < as.numeric(Pthresh), ]
+  data_f$Z <- data_f$beta / data_f$se
   
-  # Iteratively identify most significant SNP, and remove all other SNPs inthe window
+  # Iteratively identify most significant SNP, and remove all other SNPs in the window
   res <- data_f[-c(1:nrow(data_f)), ]
   
   while (nrow(data_f) > 0) {
     
-    lead_snp <- data_f[data_f$P == min(data_f$P), ]
-    res <- rbind(res, lead_snp)
+    lead_snp <- data_f[abs(data_f$Z) == max(data_f$Z), ][1, ] # If multiple SNPs have exactly the same effect, take first
+    res <- rbind(res, lead_snp[, -ncol(lead_snp), with = FALSE])
     data_f <- data_f[!(data_f$chr == lead_snp$chr & data_f$pos > lead_snp$pos - window & data_f$pos < lead_snp$pos + window),]
     message(paste("Added:", lead_snp$chr, lead_snp$pos))
   }
@@ -76,7 +77,7 @@ effect_allele = "alt", maf = "maf", p_value = "p", beta = "beta", se = "se"){
 
   input <- as.data.table(input)
   output <- input[, colnames(input) %in% c(chr, pos, ref_allele, effect_allele, maf, beta, se, p_value), with = FALSE]
-
+  output <- output[, match(c(chr, pos, ref_allele, effect_allele, maf, beta, se, p_value), colnames(output)), with = FALSE]
   colnames(output) <- c("chr", "pos", "ref_allele", "effect_allele", "maf", "beta", "se", "P")
   
   output <- as.data.frame(output)

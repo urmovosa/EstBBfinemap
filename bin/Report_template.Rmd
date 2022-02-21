@@ -73,33 +73,34 @@ for (i in 1:length(phenotypes)) {
 
 
   for (j in 1:nrow(per_pheno_table)) {
-    text_part <- paste0("### Region: ", per_pheno_table$regions[j], "\n")
-    cat("\n")
+    cat(paste0("\n### Region: ", per_pheno_table$regions[j], "\n"))
     snp <- fread(per_pheno_table$files[j])
+    cat(paste0("\n", nrow(snp), " variants tested.\n"))
+    cat("\n")
 
     snp$cs <- as.factor(snp$cs)
-    snp$lead_r2 <- as.numeric(snp$lead_r2)
+    snp$LeadSnpR2 <- as.numeric(snp$LeadSnpR2)
     snp$cs <- factor(as.character(snp$cs), levels = c("-1", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"))
-    if (nrow(snps[snps$cs != -1]) > 0){
+    if (nrow(snp[snp$cs != -1]) > 0){
       snp$LD_lead <- "R2<=0.1"
-      if (nrow(snp[snp$lead_r2 > 0.1 & snp$lead_r2 <= 0.2, ]) > 0) {
-        snp[snp$lead_r2 > 0.1 & snp$lead_r2 <= 0.2, ]$LD_lead <- "0.1<R2<=0.2"
+      if (nrow(snp[snp$LeadSnpR2 > 0.1 & snp$LeadSnpR2 <= 0.2, ]) > 0) {
+        snp[snp$LeadSnpR2 > 0.1 & snp$LeadSnpR2 <= 0.2, ]$LD_lead <- "0.1<R2<=0.2"
       }
-      if (nrow(snp[snp$lead_r2 > 0.2 & snp$lead_r2 <= 0.5, ]) > 0) {
-        snp[snp$lead_r2 > 0.2 & snp$lead_r2 <= 0.5, ]$LD_lead <- "0.2<R2<=0.5"
+      if (nrow(snp[snp$LeadSnpR2 > 0.2 & snp$LeadSnpR2 <= 0.5, ]) > 0) {
+        snp[snp$LeadSnpR2 > 0.2 & snp$LeadSnpR2 <= 0.5, ]$LD_lead <- "0.2<R2<=0.5"
       }
-      if (nrow(snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.8, ]) > 0) {
-        snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.8, ]$LD_lead <- "0.5<R2<=0.8"
+      if (nrow(snp[snp$LeadSnpR2 > 0.5 & snp$LeadSnpR2 <= 0.8, ]) > 0) {
+        snp[snp$LeadSnpR2 > 0.5 & snp$LeadSnpR2 <= 0.8, ]$LD_lead <- "0.5<R2<=0.8"
       }
-      if (nrow(snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.95, ]) > 0) {
-        snp[snp$lead_r2 > 0.8 & snp$lead_r2 <= 0.95, ]$LD_lead <- "0.8<R2<=0.95"
+      if (nrow(snp[snp$LeadSnpR2 > 0.8 & snp$LeadSnpR2 <= 0.95, ]) > 0) {
+        snp[snp$LeadSnpR2 > 0.8 & snp$LeadSnpR2 <= 0.95, ]$LD_lead <- "0.8<R2<=0.95"
       }
-      if (nrow(snp[snp$lead_r2 > 0.95, ]) > 0) {
-        snp[snp$lead_r2 > 0.95, ]$LD_lead <- ">0.95"
+      if (nrow(snp[snp$LeadSnpR2 > 0.95, ]) > 0) {
+        snp[snp$LeadSnpR2 > 0.95, ]$LD_lead <- ">0.95"
       }
 
       p0 <- ggplot(snp, aes(x = position, y = -log10(P), color = LD_lead)) +
-        geom_point() +
+        geom_point(shape = 21, size = 0.7) +
         theme_bw() +
         scale_colour_manual(values = c(
           "R2<=0.1" = "darkgrey",
@@ -152,7 +153,7 @@ for (i in 1:length(phenotypes)) {
 
       cat("\n")
       cat("\n")
-    }
+    } else {cat("No credible sets identified.")}
   }
 }
 ```

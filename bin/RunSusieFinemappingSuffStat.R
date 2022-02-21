@@ -80,7 +80,7 @@ summarize.susie.cs <- function(object, orig_vars, R, ..., low_purity_threshold =
       variables[in_cs_idx, "cs_specific_prob"] <- object$alpha[object$sets$cs_index[[i]], object$sets$cs[[i]]]
       variables$low_purity[in_cs_idx] <- object$sets$purity$min.abs.corr[i] < low_purity_threshold
       lead_pip_idx <- in_cs_idx[which.max(variables$variable_prob[in_cs_idx])]
-      variables$lead_r2[in_cs_idx] <- R[lead_pip_idx, in_cs_idx]^2
+      variables$lead_r2 <- R[lead_pip_idx, ]^2
 
       cs$cs[i] <- object$sets$cs_index[[i]]
       cs$cs_log10bf[i] <- log10(exp(object$lbf[cs$cs[i]]))
@@ -355,3 +355,14 @@ tryCatch(
     stop(e)
   }
 )
+
+# Calculate R2 to lead SNP
+snpfile <- list.files(pattern = "*susie.snp.gz")
+snpfile <- fread(snpfile)
+ld <- list.files(pattern = "*ld.gz")
+ld <- fread(ld)
+lead_snp <- snpfile[abs(snpfile$beta/snpfile$se) == max(abs(snpfile$beta/snpfile$se)), ]$UniqueSnpId2[1]
+
+snpfile$LeadSnpR2 <- ld[, colnames(ld) == lead_snp, with = FALSE]^2
+
+fwrite(snpfile, list.files(pattern = "*susie.snp.gz"), sep = "\t", quote = FALSE, row.names = FALSE)

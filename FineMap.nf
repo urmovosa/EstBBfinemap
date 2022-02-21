@@ -245,16 +245,15 @@ process PrepareSampleList {
         """
 }
 
-process FilterBgen {
+process ExtractLdMatrix {
      
-     tag {FilterBgen}
+     tag {ExtractLdMatrix}
 
      input:
         tuple env(chr), val(gwas_id), val(region), file(ss_file), file(samplelist), val(trait), file(variants), file(bgen), file(bgi), file(sample) from gwaslist_ch4
 
      output:
-        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), val(trait), file(variants), file('*.bgen'), file('*.bgi'), file('*.sample') into gwaslist_ch5
-
+        tuple file(ss_file), val(region), file(samplelist), val(trait), file(variants), file('*.ld.gz') into prepare_inp_ch
         """
         # Parse region
         chr=\$(echo ${region} | sed -e "s/:.*//g")
@@ -278,20 +277,6 @@ process FilterBgen {
         --out ${region}
 
         bgenix -index -g ${region}.bgen
-        """
-}
-
-process FilterInfoBgen {
-     
-     tag {FilterInfoBgen}
-
-     input:
-        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), val(trait), file(variants), file(bgen), file(bgi), file(sample) from gwaslist_ch5
-
-     output:
-        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), val(trait), file(variants), file('*filtered.bgen'), file('*filtered.bgen.bgi'), file('*filtered.sample'), file('*.z') into gwaslist_ch6
-
-        """
 
         plink2 \
         --bgen ${region}.bgen ref-first \
@@ -303,28 +288,18 @@ process FilterInfoBgen {
 
         bgenix -index -g ${region}_filtered.bgen
 
+        # Remove original one to save space 
+        rm ${region}.bgen
+
         plink2 \
         --bgen ${region}_filtered.bgen \
         --make-just-bim \
+        --threads 4 \
         --out ${region}_filtered
 
         echo "rsid chromosome position allele1 allele2" > ${region}.z
         awk 'BEGIN { OFS = " "} { print \$2, \$1, \$4, \$5, \$6 }' ${region}_filtered.bim >> ${region}.z
 
-        """
-}
-
-process ExtractLdMatrix {
-
-    tag {ExtractLdMatrix}
-
-    input:
-        tuple val(gwas_id), val(region), file(ss_file), file(samplelist), val(trait), file(variants), file(bgen), file(bgi), file(sample), file(zfile) from gwaslist_ch6
-    
-    output:
-        tuple file(ss_file), val(region), file(samplelist), val(trait), file(variants), file('*.ld.gz') into prepare_inp_ch
-
-        """
         # Prepare master file
         nrows=\$(wc -l ${samplelist} | awk '{print \$1}')
         nsamples=\$((\${nrows} - 1))
@@ -338,12 +313,19 @@ process ExtractLdMatrix {
         --in-files master.txt \
         --write-bcor \
         --read-only-bgen \
-        --n-threads 4 
+        --n-threads 4
+
+        # save space
+        rm ${region}_filtered.bgen
 
         /usr/bin/ldstore \
         --in-files master.txt \
         --rsids ${variants} \
-        --bcor-to-text 
+        --bcor-to-text
+
+        # save space
+        rm  *.bcor
+        rm *.sample
 
         gzip ${region}.ld
         """
@@ -363,47 +345,12 @@ process RunSuSiE {
         tuple file("*.susie.snp.gz"), file("*.susie.cred.gz"), file("*.susie.log"), file("*.rds") into output_ch,to_report_ch
 
         """
-        # Calculate var_y (function adapted from FinnGen repo: https://github.com/FINNGEN/finemapping-pipeline/blob/37d75d0451a18d56e713fb5cd7a2907a5b328a7f/wdl/finemap_sub.wdl)
-        var_y=\$(cat ${samplelist} | awk -v ph=Phenotype '
-        BEGIN {
-            FS = "\\t"
-        }
-        NR == 1 {
-            for(i = 1; i <= NF; i++) {
-                h[\$i] = i
-            }
-            exists=ph in h
-            if (!exists) {
-                print "Phenotype:"ph" not found in the given phenotype file." > "/dev/stderr"
-                err = 1
-                exit 1
-            }
-            cases = 0
-            controls = 0
-        }
-        NR > 1 {
-            vals[\$h[ph]] += 1
-            if (\$h[ph] != "NA" && \$h[ph] != 0 && \$h[ph] != 1) {
-                print "Phenotype:"ph" seems a quantitative trait. Setting var_y = 1." > "/dev/stderr"
-                print 1.0
-                err = 1
-                exit 0
-            }
-        }
-        END {
-            if (!err) {
-                phi = vals["1"] / (vals["1"]+vals["0"])
-                var_y = phi*(1-phi)
-                printf var_y
-            }
-        }')
+        # Calculate var_y
+        var_y=\$(Rscript --vanilla ${baseDir}/bin/CalcVarY.R ${samplelist} ${trait})
+        #Rscript --vanilla ${baseDir}/bin/CalcVarY.R ${samplelist} ${trait}
 
-        if [[ \$? -ne 0 ]]
-        then
-            echo "Error occurred while getting var_y from case control counts:" \$var_y
-            exit 1
-        fi
-
+        echo \${var_y}
+        
         # Prepare master file
         nrows=\$(wc -l ${samplelist} | awk '{print \$1}')
         nsamples=\$((\${nrows} - 1))
