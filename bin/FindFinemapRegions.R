@@ -51,12 +51,12 @@ IdentifyLeadSNPs <- function(data, window = 1000000, Pthresh = 5e-8, RemoveHLA =
   data_f$Z <- data_f$beta / data_f$se
   
   # Iteratively identify most significant SNP, and remove all other SNPs in the window
-  res <- data_f[-c(1:nrow(data_f)), ]
+  res <- data_f[-c(1:nrow(data_f)), -ncol(data_f)]
   
   while (nrow(data_f) > 0) {
     
-    lead_snp <- data_f[abs(data_f$Z) == max(data_f$Z), ][1, ] # If multiple SNPs have exactly the same effect, take first
-    res <- rbind(res, lead_snp[, -ncol(lead_snp), with = FALSE])
+    lead_snp <- data_f[abs(data_f$Z) == max(abs(data_f$Z)), ][1, ] # If multiple SNPs have exactly the same effect, take first
+    res <- rbind(res, lead_snp[, -ncol(lead_snp)])
     data_f <- data_f[!(data_f$chr == lead_snp$chr & data_f$pos > lead_snp$pos - window & data_f$pos < lead_snp$pos + window),]
     message(paste("Added:", lead_snp$chr, lead_snp$pos))
   }
@@ -107,7 +107,7 @@ sum_stat <- AdjustFileFormat(sum_stat,
                               se = args$se_col,
                               p_value = args$p_col)
 
-fwrite(sum_stat, paste0("standardized_", args$gwas_file), sep = "\t", quote = FALSE, row.names = FALSE)
+fwrite(sum_stat, file = paste0("standardized_", args$gwas_file), sep = "\t", quote = FALSE, row.names = FALSE)
 
 # Filter:
 # MAF
@@ -115,7 +115,7 @@ message(paste("Before MAF filter", nrow(sum_stat), "variants."))
 sum_stat <- sum_stat[sum_stat$maf > MAF_thresh, ]
 message(paste("After MAF filter", nrow(sum_stat), "variants."))
 
-fwrite(sum_stat, paste0("standardized_", args$gwas_file), sep = "\t", quote = FALSE, row.names = FALSE)
+fwrite(sum_stat, file = paste0("standardized_", args$gwas_file), sep = "\t", quote = FALSE, row.names = FALSE)
 
 
 if (!nrow(sum_stat[sum_stat$P < P_thresh, ]) > 0){
@@ -124,13 +124,13 @@ if (!nrow(sum_stat[sum_stat$P < P_thresh, ]) > 0){
   abi <- data.table(SS = "temp", Region = "temp")
   gwas_file_name <- str_replace(args$gwas_file, "\\..*", "")
   abi$Region <- str_replace(abi$Region, "23:", "X:")
-  fwrite(abi[-1, ], paste0(gwas_file_name, "_regions.txt"), sep = "\t")
+  fwrite(abi[-1, ], file = paste0(gwas_file_name, "_regions.txt"), sep = "\t", sep = "\t", quote = FALSE, row.names = FALSE)
 
 } else {
 
   regions <- IdentifyLeadSNPs(sum_stat, window = WIN, Pthresh = P_thresh)
   gwas_file_name <- str_replace(args$gwas_file, "\\..*", "")
   regions <- str_replace(regions, "23:", "X:")
-  fwrite(data.table(SS = gwas_file_name, Region = regions), paste0(gwas_file_name, "_regions.txt"), sep = "\t")
+  fwrite(data.table(SS = gwas_file_name, Region = regions), file = paste0(gwas_file_name, "_regions.txt"), sep = "\t", quote = FALSE, row.names = FALSE)
 
 }
