@@ -4,7 +4,8 @@ date: "`r format(Sys.time(), '%d/%m/%y')`"
 output: html_document
 ---
 
-Below is the report about SuSiE fine-mapping results over all phenotypes and loci. Each locus was defined as +/-1Mb from index SNP (in case of multiple perfect proxies with equal significance, select the first one). For each effect with identified credible sets, we visualise three plots: regional plot where color of the SNP corresponds to LD R2 with index SNP (from input dataset), regional plot where color of the SNP corresponds to credible set status (different credible sets depicted with different colors), and regional plot where on the y-axis is posterior inclusion probability of each SNP (again, color depicts credible set status).
+Below is the report about SuSiE fine-mapping results over all phenotypes and loci. Each locus was defined based on predefined window from index SNP (in case of multiple perfect proxies with equal significance, we select the random one). For each locus with identified credible sets, we visualise three plots: regional plot where color of the SNP corresponds to LD R^2^ with index SNP (LD estimated from input dataset), regional plot where color of the SNP corresponds to credible set status (different credible sets depicted with different colors), and regional plot where on the y-axis is posterior inclusion probability of each SNP (again, color depicts credible set status). Only credible sets with *purity* R^2^>0.5 are reported.
+
 
 ```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
 library(data.table)
