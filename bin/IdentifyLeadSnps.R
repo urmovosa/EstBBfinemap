@@ -2,7 +2,7 @@ IdentifyLeadSNPs <- function(data, window = 1000000, Pthresh = 5e-8, RemoveHLA =
 
   data_f <- data[data$P < as.numeric(Pthresh), ]
   
-  # Iteratively identify most significant SNP, and remove all other SNPs inthe window
+  # Iteratively identify most significant SNP, and remove all other SNPs in the window
   res <- data_f[-c(1:nrow(data_f)), ]
   
   while (nrow(data_f) > 0) {

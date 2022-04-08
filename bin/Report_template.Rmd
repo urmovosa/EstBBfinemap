@@ -151,6 +151,7 @@ for (i in 1:length(phenotypes)) {
         cat(paste0("\n##### Summary about CSs: ", "\n"))
         print(knitr::kable(temp))
         cat(paste0("\n##### Highest PIP SNP per each CS: ", "\n"))
+        highest_pip$P <- formatC(highest_pip$P, format = "e")
         print(knitr::kable(highest_pip[order(highest_pip$cs), c(1:12, 16:17)]))
 
 
