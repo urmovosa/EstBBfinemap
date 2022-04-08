@@ -56,6 +56,9 @@ for (i in 1:length(phenotypes)) {
   cred_count <- 0
   mult_cred_count <- 0
 
+  per_pheno_table$cred_files <- as.character(per_pheno_table$cred_files)
+  per_pheno_table$files <- as.character(per_pheno_table$files)
+
   for (k in 1:nrow(per_pheno_table)) {
     if (file.exists(per_pheno_table$cred_files[k])) {
       temp <- fread(per_pheno_table$cred_files[k])

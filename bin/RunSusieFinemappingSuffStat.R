@@ -363,6 +363,8 @@ ld <- list.files(pattern = "*ld.gz")
 ld <- fread(ld)
 lead_snp <- snpfile[abs(snpfile$beta/snpfile$se) == max(abs(snpfile$beta/snpfile$se)), ]$UniqueSnpId2[1]
 
+ld <- ld[ld$rsid %in% snpfile$UniqueSnpId2, ]
+
 snpfile$LeadSnpR2 <- ld[, colnames(ld) == lead_snp, with = FALSE]^2
 
 fwrite(snpfile, list.files(pattern = "*susie.snp.gz"), sep = "\t", quote = FALSE, row.names = FALSE)
