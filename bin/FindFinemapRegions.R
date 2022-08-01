@@ -57,15 +57,27 @@ IdentifyLeadSNPs <- function(data, window = 1000000, Pthresh = 5e-8, RemoveHLA =
     
     lead_snp <- data_f[abs(data_f$Z) == max(abs(data_f$Z)), ][1, ] # If multiple SNPs have exactly the same effect, take first
     res <- rbind(res, lead_snp[, -ncol(lead_snp)])
-    data_f <- data_f[!(data_f$chr == lead_snp$chr & data_f$pos > lead_snp$pos - window & data_f$pos < lead_snp$pos + window),]
+    data_f <- data_f[!(data_f$chr == lead_snp$chr & data_f$pos > lead_snp$pos - window & data_f$pos < lead_snp$pos + window), ]
     message(paste("Added:", lead_snp$chr, lead_snp$pos))
+    
   }
   
   # Remove SNPs for which the region overlaps with HLA region (hg19)
   res <- res[!(res$chr == 6 & ((res$pos - window > 28477797 & res$pos - window < 33448354) | (res$pos + window > 28477797 & res$pos + window < 33448354))), ]
   message("SNPs overlapping hg19 MHC region removed!")
 
-  res <- paste0(res$chr, ":", res$pos - window, "-", res$pos + window)
+  if (res$pos - window < 0){
+
+    res <- paste0(res$chr, ":", 0, "-", res$pos + window)
+
+  } else {
+
+    res <- paste0(res$chr, ":", res$pos - window, "-", res$pos + window)
+
+  }
+
+  # Replace effects where the window overlaps with chromosome start with 0
+  res[res]
   
   return(res)
 }
